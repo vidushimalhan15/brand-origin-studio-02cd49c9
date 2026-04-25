@@ -1,95 +1,115 @@
-import { useMemo, useState } from "react";
-import { Sparkles, X, Check, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import {
+  Sparkles,
+  Loader2,
+  Globe,
+  RefreshCw,
+  Zap,
+  BarChart3,
+  TrendingUp,
+  Lightbulb,
+  AlertCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import {
+  analyzeBrandUrl,
+  fetchPeecInsights,
+} from "@/server/brand.functions";
 
-const INDUSTRIES = [
-  "SaaS",
-  "E-commerce",
-  "Fintech",
-  "Healthcare",
-  "Education",
-  "Fashion",
-  "Travel",
-  "Food & Beverage",
-  "Real Estate",
-  "Fitness",
-  "Gaming",
-  "Media",
-  "B2B Services",
-  "Sustainability",
-];
+type PeecPrompt = {
+  prompt: string;
+  rank: number;
+  volume: string;
+};
 
-const TONES = [
-  "Professional",
-  "Friendly",
-  "Bold",
-  "Inspirational",
-  "Playful",
-  "Authoritative",
-  "Witty",
-  "Empathetic",
-];
+type PeecData = {
+  prompts: PeecPrompt[];
+  strategy: {
+    name: string;
+    rationale: string;
+    suggestedTemplates: string[];
+  };
+};
 
-const MAX_INTRO = 500;
-const MAX_INDUSTRIES = 5;
-const MAX_TONES = 3;
+function rankColor(rank: number) {
+  if (rank <= 2) return "bg-emerald-500";
+  if (rank <= 4) return "bg-amber-500";
+  return "bg-rose-500";
+}
+
+function rankLabel(rank: number) {
+  if (rank <= 2) return "High";
+  if (rank <= 4) return "Medium";
+  return "Low";
+}
 
 export default function BrandIdentityStep() {
+  const analyze = useServerFn(analyzeBrandUrl);
+  const fetchPeec = useServerFn(fetchPeecInsights);
+
+  const [url, setUrl] = useState("");
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+
   const [brandName, setBrandName] = useState("");
   const [intro, setIntro] = useState("");
-  const [industries, setIndustries] = useState<string[]>([]);
-  const [industryQuery, setIndustryQuery] = useState("");
-  const [tones, setTones] = useState<string[]>([]);
-  const [enhancing, setEnhancing] = useState(false);
 
-  const filteredIndustries = useMemo(() => {
-    const q = industryQuery.trim().toLowerCase();
-    return INDUSTRIES.filter(
-      (i) => !industries.includes(i) && (q === "" || i.toLowerCase().includes(q)),
-    ).slice(0, 6);
-  }, [industries, industryQuery]);
+  const [peec, setPeec] = useState<PeecData | null>(null);
+  const [peecLoading, setPeecLoading] = useState(false);
+  const [peecError, setPeecError] = useState<string | null>(null);
 
-  const toggleIndustry = (item: string) => {
-    setIndustries((prev) =>
-      prev.includes(item)
-        ? prev.filter((i) => i !== item)
-        : prev.length < MAX_INDUSTRIES
-          ? [...prev, item]
-          : prev,
-    );
-    setIndustryQuery("");
+  const loadPeec = async (name: string, introduction: string) => {
+    if (!name.trim() || !introduction.trim()) return;
+    setPeecLoading(true);
+    setPeecError(null);
+    try {
+      const result = await fetchPeec({
+        data: { brandName: name, introduction },
+      });
+      if (result.error) {
+        setPeecError(result.error);
+      } else {
+        setPeec({ prompts: result.prompts, strategy: result.strategy });
+      }
+    } catch (err) {
+      setPeecError(
+        err instanceof Error ? err.message : "Failed to fetch insights.",
+      );
+    } finally {
+      setPeecLoading(false);
+    }
   };
 
-  const toggleTone = (tone: string) => {
-    setTones((prev) =>
-      prev.includes(tone)
-        ? prev.filter((t) => t !== tone)
-        : prev.length < MAX_TONES
-          ? [...prev, tone]
-          : prev,
-    );
+  const handleAnalyze = async () => {
+    if (!url.trim() || analyzing) return;
+    setAnalyzing(true);
+    setAnalyzeError(null);
+    try {
+      const result = await analyze({ data: { url } });
+      if (result.error) {
+        setAnalyzeError(result.error);
+      } else {
+        setBrandName(result.brandName);
+        setIntro(result.introduction);
+        // kick off peec insights in parallel-ish
+        void loadPeec(result.brandName, result.introduction);
+      }
+    } catch (err) {
+      setAnalyzeError(
+        err instanceof Error ? err.message : "Something went wrong.",
+      );
+    } finally {
+      setAnalyzing(false);
+    }
   };
 
-  const enhanceIntro = async () => {
-    if (!intro.trim() || enhancing) return;
-    setEnhancing(true);
-    await new Promise((r) => setTimeout(r, 1100));
-    const base = intro.trim().replace(/\.$/, "");
-    const enhanced = `${brandName || "Our brand"} helps modern teams ${base
-      .toLowerCase()
-      .replace(/^we\s+/, "")
-      .replace(/^our\s+/, "")} — delivering measurable impact through thoughtful design, intelligent automation, and a relentless focus on customer outcomes.`;
-    setIntro(enhanced.slice(0, MAX_INTRO));
-    setEnhancing(false);
-  };
-
-  const introCount = intro.length;
-  const overLimit = introCount > MAX_INTRO;
+  const refreshPeec = () => loadPeec(brandName, intro);
 
   return (
     <div className="min-h-screen bg-background py-12 px-4 sm:py-16">
@@ -116,12 +136,52 @@ export default function BrandIdentityStep() {
               Tell us about your brand
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              We&apos;ll use this to craft on-brand content tailored to your
-              audience.
+              Paste a URL and we&apos;ll analyze your brand with AI in seconds.
             </p>
           </div>
 
-          <div className="space-y-7">
+          {/* URL Scraper Bar */}
+          <div className="mb-8">
+            <Label htmlFor="brand-url" className="mb-2 block text-sm font-medium">
+              Website, LinkedIn profile, or company URL
+            </Label>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="relative flex-1">
+                <Globe className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="brand-url"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://yourbrand.com"
+                  disabled={analyzing}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleAnalyze();
+                  }}
+                  className="h-11 rounded-xl pl-9"
+                />
+              </div>
+              <Button
+                onClick={handleAnalyze}
+                disabled={!url.trim() || analyzing}
+                className="h-11 gap-2 rounded-xl px-5 shadow-sm transition-all hover:shadow-md"
+              >
+                {analyzing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+                {analyzing ? "Analyzing…" : "Analyze Brand"}
+              </Button>
+            </div>
+            {analyzeError && (
+              <div className="mt-3 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+                <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                <span>{analyzeError}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-6">
             {/* Brand Name */}
             <div className="space-y-2">
               <Label htmlFor="brand-name" className="text-sm font-medium">
@@ -129,7 +189,7 @@ export default function BrandIdentityStep() {
               </Label>
               <Input
                 id="brand-name"
-                placeholder="e.g. SocialFlow"
+                placeholder="Your brand name"
                 value={brandName}
                 onChange={(e) => setBrandName(e.target.value)}
                 className="h-11 rounded-xl"
@@ -138,149 +198,152 @@ export default function BrandIdentityStep() {
 
             {/* Brand Introduction */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="brand-intro" className="text-sm font-medium">
-                  Brand introduction
-                </Label>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={enhanceIntro}
-                  disabled={enhancing || !intro.trim()}
-                  className="h-8 gap-1.5 rounded-lg text-primary hover:bg-primary/10 hover:text-primary"
-                >
-                  {enhancing ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-3.5 w-3.5" />
-                  )}
-                  {enhancing ? "Enhancing…" : "Help me write this"}
-                </Button>
-              </div>
+              <Label htmlFor="brand-intro" className="text-sm font-medium">
+                Brand introduction
+              </Label>
               <Textarea
                 id="brand-intro"
-                placeholder="Describe what your brand does, who you serve, and what makes you different…"
+                placeholder="A short, engaging description of what your brand does…"
                 value={intro}
-                onChange={(e) => setIntro(e.target.value.slice(0, MAX_INTRO))}
-                rows={5}
-                className={cn(
-                  "resize-none rounded-xl",
-                  enhancing && "opacity-60",
-                )}
-                disabled={enhancing}
+                onChange={(e) => setIntro(e.target.value)}
+                rows={4}
+                className="resize-none rounded-xl"
               />
-              <div className="flex justify-end">
-                <span
-                  className={cn(
-                    "text-xs tabular-nums",
-                    overLimit
-                      ? "text-destructive"
-                      : introCount > MAX_INTRO * 0.85
-                        ? "text-foreground"
-                        : "text-muted-foreground",
-                  )}
-                >
-                  {introCount} / {MAX_INTRO}
-                </span>
-              </div>
             </div>
+          </div>
 
-            {/* Industry / Niche */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium">Industry / Niche</Label>
-                <span className="text-xs text-muted-foreground">
-                  {industries.length}/{MAX_INDUSTRIES}
-                </span>
+          {/* Peec AI Insights */}
+          {(peec || peecLoading || peecError) && (
+            <div className="mt-8 rounded-2xl border border-indigo-200 bg-gradient-to-br from-purple-50 to-fuchsia-50 p-6 shadow-sm">
+              <div className="mb-5 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-500 shadow-sm">
+                    <Zap className="h-4 w-4 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-indigo-950">
+                      Peec AI — Content Strategy Signals
+                    </h3>
+                    <p className="text-xs text-indigo-700/70">
+                      How AI assistants see your brand
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={refreshPeec}
+                  disabled={peecLoading || !brandName || !intro}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-indigo-200 bg-white/60 text-indigo-700 transition-all hover:bg-white hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Refresh insights"
+                >
+                  <RefreshCw
+                    className={cn(
+                      "h-3.5 w-3.5",
+                      peecLoading && "animate-spin",
+                    )}
+                  />
+                </button>
               </div>
 
-              <div
-                className={cn(
-                  "flex min-h-11 flex-wrap items-center gap-2 rounded-xl border border-input bg-background px-3 py-2 transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20",
-                )}
-              >
-                {industries.map((item) => (
-                  <span
-                    key={item}
-                    className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
-                  >
-                    {item}
-                    <button
-                      type="button"
-                      onClick={() => toggleIndustry(item)}
-                      className="rounded-sm transition-colors hover:text-primary/70"
-                      aria-label={`Remove ${item}`}
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </span>
-                ))}
-                <input
-                  value={industryQuery}
-                  onChange={(e) => setIndustryQuery(e.target.value)}
-                  placeholder={
-                    industries.length === 0
-                      ? "Search and add up to 5 niches…"
-                      : industries.length < MAX_INDUSTRIES
-                        ? "Add another…"
-                        : ""
-                  }
-                  disabled={industries.length >= MAX_INDUSTRIES}
-                  className="flex-1 min-w-[140px] bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
-                />
-              </div>
+              {peecError && (
+                <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-white/70 p-3 text-sm text-destructive">
+                  <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                  <span>{peecError}</span>
+                </div>
+              )}
 
-              {industryQuery && filteredIndustries.length > 0 && (
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {filteredIndustries.map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() => toggleIndustry(item)}
-                      className="rounded-lg border border-border bg-background px-2.5 py-1 text-xs text-foreground transition-all hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
-                    >
-                      + {item}
-                    </button>
+              {peecLoading && !peec && (
+                <div className="space-y-3">
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <div
+                      key={i}
+                      className="h-10 animate-pulse rounded-lg bg-white/60"
+                    />
                   ))}
                 </div>
               )}
-            </div>
 
-            {/* Tone & Voice */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium">Tone &amp; voice</Label>
-                <span className="text-xs text-muted-foreground">
-                  Pick up to {MAX_TONES} · {tones.length}/{MAX_TONES}
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {TONES.map((tone) => {
-                  const selected = tones.includes(tone);
-                  const disabled = !selected && tones.length >= MAX_TONES;
-                  return (
-                    <button
-                      key={tone}
-                      type="button"
-                      onClick={() => toggleTone(tone)}
-                      disabled={disabled}
-                      className={cn(
-                        "group inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-all duration-200",
-                        selected
-                          ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                          : "border-border bg-background text-foreground hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/5 hover:text-primary hover:shadow-sm",
-                        disabled && "cursor-not-allowed opacity-40 hover:translate-y-0 hover:shadow-none",
+              {peec && !peecLoading && (
+                <div className="space-y-6">
+                  {/* High Volume Prompts */}
+                  <div>
+                    <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-indigo-900">
+                      <BarChart3 className="h-3.5 w-3.5" />
+                      What people ask AI about your brand
+                    </div>
+                    <ul className="space-y-2">
+                      {peec.prompts.map((p) => (
+                        <li
+                          key={p.rank}
+                          className="group flex items-center gap-3 rounded-xl border border-indigo-100 bg-white/70 p-3 backdrop-blur-sm transition-all hover:border-indigo-200 hover:bg-white hover:shadow-sm"
+                        >
+                          <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-indigo-50 text-xs font-bold text-indigo-900">
+                            #{p.rank}
+                          </span>
+                          <span className="flex-1 text-sm text-slate-800">
+                            &ldquo;{p.prompt}&rdquo;
+                          </span>
+                          <div className="flex flex-shrink-0 items-center gap-2">
+                            <span className="text-xs tabular-nums text-slate-500">
+                              {p.volume}
+                            </span>
+                            <span
+                              className={cn(
+                                "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white",
+                                rankColor(p.rank),
+                              )}
+                            >
+                              <span
+                                className="h-1.5 w-1.5 rounded-full bg-white/90"
+                                aria-hidden
+                              />
+                              {rankLabel(p.rank)}
+                            </span>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Recommended Strategy */}
+                  <div>
+                    <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-indigo-900">
+                      <TrendingUp className="h-3.5 w-3.5" />
+                      Recommended strategy
+                    </div>
+                    <div className="rounded-xl border border-indigo-100 bg-white/70 p-4 backdrop-blur-sm">
+                      <div className="mb-2 flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-3 py-1 text-xs font-semibold text-white shadow-sm">
+                          <Lightbulb className="h-3 w-3" />
+                          {peec.strategy.name}
+                        </span>
+                      </div>
+                      <p className="text-sm leading-relaxed text-slate-700">
+                        {peec.strategy.rationale}
+                      </p>
+                      {peec.strategy.suggestedTemplates.length > 0 && (
+                        <div className="mt-3 border-t border-indigo-100 pt-3">
+                          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-indigo-700/80">
+                            Suggested templates
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {peec.strategy.suggestedTemplates.map((t) => (
+                              <span
+                                key={t}
+                                className="rounded-md border border-indigo-200 bg-white px-2 py-1 text-xs font-medium text-indigo-800"
+                              >
+                                {t}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
                       )}
-                    >
-                      {selected && <Check className="h-3.5 w-3.5" />}
-                      {tone}
-                    </button>
-                  );
-                })}
-              </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
+          )}
 
           {/* Footer */}
           <div className="mt-10 flex items-center justify-between border-t border-border pt-6">
@@ -289,12 +352,7 @@ export default function BrandIdentityStep() {
             </Button>
             <Button
               className="h-11 rounded-xl px-6 shadow-sm transition-all hover:shadow-md"
-              disabled={
-                !brandName.trim() ||
-                !intro.trim() ||
-                industries.length === 0 ||
-                tones.length === 0
-              }
+              disabled={!brandName.trim() || !intro.trim()}
             >
               Continue
             </Button>
