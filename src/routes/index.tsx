@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import AppLayout from "@/components/AppLayout";
 import BrandIdentityStep from "@/components/BrandIdentityStep";
 
 export const Route = createFileRoute("/")({
@@ -6,5 +7,9 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  return <BrandIdentityStep />;
+  return (
+    <AppLayout>
+      <BrandIdentityStep />
+    </AppLayout>
+  );
 }
