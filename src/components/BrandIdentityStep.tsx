@@ -130,10 +130,6 @@ export default function BrandIdentityStep() {
         {/* Card */}
         <div className="rounded-2xl border border-border bg-card p-8 shadow-elegant sm:p-10">
           <div className="mb-8">
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              SocialFlow Setup
-            </div>
             <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
               Tell us about your brand
             </h1>
