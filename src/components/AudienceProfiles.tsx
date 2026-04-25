@@ -16,13 +16,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { suggestAudiences } from "@/server/brand.functions";
+import { useAudiences, type Audience } from "@/hooks/use-brand-store";
 
-export type Audience = {
-  id: string;
-  name: string;
-  roleAndIndustry: string;
-  challenge: string;
-};
+export type { Audience };
 
 type Props = {
   brandName: string;
@@ -34,7 +30,7 @@ const emptyDraft = { name: "", roleAndIndustry: "", challenge: "" };
 export default function AudienceProfiles({ brandName, introduction }: Props) {
   const suggest = useServerFn(suggestAudiences);
 
-  const [audiences, setAudiences] = useState<Audience[]>([]);
+  const [audiences, setAudiences] = useAudiences();
   const [draft, setDraft] = useState(emptyDraft);
   const [editingId, setEditingId] = useState<string | null>(null);
 
