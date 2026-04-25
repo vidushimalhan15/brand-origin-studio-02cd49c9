@@ -1,14 +1,16 @@
 import { LayoutDashboard, Target, PenTool, Rocket, Settings } from "lucide-react";
+import { Link, useLocation } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
 const navigation = [
-  { name: "Dashboard", icon: LayoutDashboard, path: "/" },
-  { name: "Brand Setup", icon: Target, path: "/brand-setup" },
+  { name: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
+  { name: "Brand Setup", icon: Target, path: "/" },
   { name: "Content Strategy", icon: PenTool, path: "/strategy" },
   { name: "Campaigns", icon: Rocket, path: "/campaigns" },
-];
+] as const;
 
 export default function AppLayout({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation();
   return (
     <div className="flex min-h-screen bg-slate-50 antialiased">
       <aside className="w-64 bg-white border-r border-slate-200 fixed h-full flex flex-col">
@@ -17,10 +19,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </div>
         <nav className="flex-1 px-4 space-y-1">
           {navigation.map((item) => {
-            const isActive = item.name === "Brand Setup";
+            const isActive = pathname === item.path;
             return (
-              <div
+              <Link
                 key={item.name}
+                to={item.path}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
                   isActive
                     ? "bg-indigo-50 text-indigo-700"
@@ -31,7 +34,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                   className={`w-4 h-4 ${isActive ? "text-indigo-600" : "text-slate-400"}`}
                 />
                 {item.name}
-              </div>
+              </Link>
             );
           })}
         </nav>
