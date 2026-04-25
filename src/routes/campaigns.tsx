@@ -96,6 +96,33 @@ function CampaignsPage() {
   });
   const [events, setEvents] = useState(EVENTS_BY_LOCATION["Germany"]);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedAudienceId, setSelectedAudienceId] = useState<string | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [savedCampaign, setSavedCampaign] = useState<null | { name: string }>(null);
+
+  const [audiences] = useAudiences();
+  const [products] = useProducts();
+
+  const handleGenerate = () => {
+    const campaign = {
+      name: name || "Untitled Campaign",
+      pillars,
+      startDate,
+      endDate,
+      location,
+      platforms: Object.entries(platforms).filter(([, v]) => v).map(([k]) => k),
+      selectedAudienceId,
+      selectedProductId,
+    };
+    try {
+      window.localStorage.setItem("socialflow.lastCampaign", JSON.stringify(campaign));
+    } catch {
+      void 0;
+    }
+    setSavedCampaign({ name: campaign.name });
+    setTimeout(() => setSavedCampaign(null), 3500);
+  };
+
 
   const togglePlatform = (id: PlatformId) =>
     setPlatforms((p) => ({ ...p, [id]: !p[id] }));
