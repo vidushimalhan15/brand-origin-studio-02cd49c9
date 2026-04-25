@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   Calendar,
@@ -13,8 +13,14 @@ import {
   Youtube,
   Plus,
   X,
+  Check,
+  Users,
+  Package,
+  ArrowRight,
 } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
+import { useAudiences, useProducts } from "@/hooks/use-brand-store";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/campaigns")({
   head: () => ({
