@@ -490,3 +490,18 @@ function CampaignsPage() {
     </AppLayout>
   );
 }
+
+function EmptyLink({ message, cta }: { message: string; cta: string }) {
+  return (
+    <div className="rounded-xl border-2 border-dashed border-slate-200 p-6 flex flex-col items-center text-center gap-3">
+      <p className="text-sm text-slate-500">{message}</p>
+      <Link
+        to="/"
+        className="inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+      >
+        {cta}
+        <ArrowRight className="w-3.5 h-3.5" />
+      </Link>
+    </div>
+  );
+}
