@@ -270,3 +270,48 @@ Return JSON in this exact shape:
       };
     }
   });
+
+type DraftDescriptionResult = {
+  description: string;
+  error?: string;
+};
+
+export const draftProductDescription = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      productName: z.string().min(1).max(120),
+      brandName: z.string().max(120).optional().default(""),
+      introduction: z.string().max(600).optional().default(""),
+      currentDescription: z.string().max(600).optional().default(""),
+    }),
+  )
+  .handler(async ({ data }): Promise<DraftDescriptionResult> => {
+    const system =
+      "You are a senior product copywriter. Write a compelling 2-3 sentence product or service description " +
+      "that matches the brand's tone of voice. Be specific, benefit-led, and concise. " +
+      "Reply with strict JSON only.";
+
+    const user = `Brand: ${data.brandName || "(unspecified)"}
+Brand introduction: ${data.introduction || "(none)"}
+Product/service name: ${data.productName}
+${data.currentDescription ? `Current draft to expand: ${data.currentDescription}` : ""}
+
+Return JSON in this exact shape:
+{"description": "2-3 sentence description"}`;
+
+    try {
+      const raw = await callGemini(system, user);
+      const parsed = extractJson<{ description: string }>(raw);
+      if (!parsed?.description) {
+        return { description: "", error: "Could not draft a description." };
+      }
+      return { description: parsed.description.slice(0, 600) };
+    } catch (err) {
+      console.error("draftProductDescription failed:", err);
+      return {
+        description: "",
+        error:
+          err instanceof Error ? err.message : "Failed to draft description.",
+      };
+    }
+  });
