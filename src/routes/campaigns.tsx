@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   Calendar,
@@ -13,8 +13,14 @@ import {
   Youtube,
   Plus,
   X,
+  Check,
+  Users,
+  Package,
+  ArrowRight,
 } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
+import { useAudiences, useProducts } from "@/hooks/use-brand-store";
+
 
 export const Route = createFileRoute("/campaigns")({
   head: () => ({
@@ -90,6 +96,33 @@ function CampaignsPage() {
   });
   const [events, setEvents] = useState(EVENTS_BY_LOCATION["Germany"]);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedAudienceId, setSelectedAudienceId] = useState<string | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [savedCampaign, setSavedCampaign] = useState<null | { name: string }>(null);
+
+  const [audiences] = useAudiences();
+  const [products] = useProducts();
+
+  const handleGenerate = () => {
+    const campaign = {
+      name: name || "Untitled Campaign",
+      pillars,
+      startDate,
+      endDate,
+      location,
+      platforms: Object.entries(platforms).filter(([, v]) => v).map(([k]) => k),
+      selectedAudienceId,
+      selectedProductId,
+    };
+    try {
+      window.localStorage.setItem("socialflow.lastCampaign", JSON.stringify(campaign));
+    } catch {
+      void 0;
+    }
+    setSavedCampaign({ name: campaign.name });
+    setTimeout(() => setSavedCampaign(null), 3500);
+  };
+
 
   const togglePlatform = (id: PlatformId) =>
     setPlatforms((p) => ({ ...p, [id]: !p[id] }));
@@ -302,8 +335,146 @@ function CampaignsPage() {
             </div>
           </div>
 
+          {/* Target Audience */}
+          <div className={cardClass}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-indigo-600" />
+                <div>
+                  <h4 className="font-semibold text-slate-900">Target Audience</h4>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Pick one audience this campaign will speak to.
+                  </p>
+                </div>
+              </div>
+              {selectedAudienceId && (
+                <button
+                  onClick={() => setSelectedAudienceId(null)}
+                  className="text-xs text-slate-500 hover:text-slate-700"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            {audiences.length === 0 ? (
+              <EmptyLink
+                message="You haven't added any audiences yet."
+                cta="Go to Brand Setup"
+              />
+            ) : (
+              <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 md:grid md:grid-cols-3 md:gap-3 md:overflow-visible">
+                {audiences.map((a) => {
+                  const isSelected = selectedAudienceId === a.id;
+                  return (
+                    <div
+                      key={a.id}
+                      onClick={() => setSelectedAudienceId(isSelected ? null : a.id)}
+                      className={`relative p-4 rounded-xl border-2 transition-all cursor-pointer min-w-[200px] ${
+                        isSelected
+                          ? "border-indigo-600 bg-indigo-50/50 shadow-md"
+                          : "border-slate-100 bg-white hover:border-slate-200"
+                      }`}
+                    >
+                      {isSelected && (
+                        <div className="absolute -top-2 -right-2 bg-indigo-600 text-white rounded-full p-1 shadow-lg">
+                          <Check className="w-3 h-3" />
+                        </div>
+                      )}
+                      <p
+                        className={`text-sm font-bold ${
+                          isSelected ? "text-indigo-900" : "text-slate-700"
+                        }`}
+                      >
+                        {a.name}
+                      </p>
+                      <p className="text-[10px] text-slate-500 line-clamp-1 mt-0.5">
+                        {a.roleAndIndustry}
+                      </p>
+                      <p className="text-[10px] text-slate-400 line-clamp-2 mt-1">
+                        {a.challenge}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Product / Service */}
+          <div className={cardClass}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Package className="w-4 h-4 text-indigo-600" />
+                <div>
+                  <h4 className="font-semibold text-slate-900">Product / Service</h4>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    What are you promoting in this campaign?
+                  </p>
+                </div>
+              </div>
+              {selectedProductId && (
+                <button
+                  onClick={() => setSelectedProductId(null)}
+                  className="text-xs text-slate-500 hover:text-slate-700"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            {products.length === 0 ? (
+              <EmptyLink
+                message="You haven't added any products or services yet."
+                cta="Go to Brand Setup"
+              />
+            ) : (
+              <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 md:grid md:grid-cols-3 md:gap-3 md:overflow-visible">
+                {products.map((p) => {
+                  const isSelected = selectedProductId === p.id;
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => setSelectedProductId(isSelected ? null : p.id)}
+                      className={`relative p-4 rounded-xl border-2 transition-all cursor-pointer min-w-[200px] ${
+                        isSelected
+                          ? "border-indigo-600 bg-indigo-50/50 shadow-md"
+                          : "border-slate-100 bg-white hover:border-slate-200"
+                      }`}
+                    >
+                      {isSelected && (
+                        <div className="absolute -top-2 -right-2 bg-indigo-600 text-white rounded-full p-1 shadow-lg">
+                          <Check className="w-3 h-3" />
+                        </div>
+                      )}
+                      <p
+                        className={`text-sm font-bold ${
+                          isSelected ? "text-indigo-900" : "text-slate-700"
+                        }`}
+                      >
+                        {p.name}
+                      </p>
+                      <p className="text-[10px] text-slate-500 line-clamp-2 mt-1">
+                        {p.description}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {savedCampaign && (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 flex items-center gap-2 text-sm text-emerald-800">
+              <Check className="w-4 h-4" />
+              Saved <span className="font-semibold">{savedCampaign.name}</span> — ready to
+              generate.
+            </div>
+          )}
+
           {/* CTA */}
-          <button className="w-full bg-indigo-600 p-8 rounded-3xl text-white flex items-center justify-between group hover:bg-indigo-700 hover:-translate-y-0.5 hover:shadow-lg transition-all text-left shadow-sm">
+          <button
+            onClick={handleGenerate}
+            className="w-full bg-indigo-600 p-8 rounded-3xl text-white flex items-center justify-between group hover:bg-indigo-700 hover:-translate-y-0.5 hover:shadow-lg transition-all text-left shadow-sm"
+          >
             <div>
               <h4 className="text-lg font-bold">Ready to Generate Strategy?</h4>
               <p className="text-indigo-100 text-sm mt-1">
@@ -317,5 +488,20 @@ function CampaignsPage() {
         </div>
       </div>
     </AppLayout>
+  );
+}
+
+function EmptyLink({ message, cta }: { message: string; cta: string }) {
+  return (
+    <div className="rounded-xl border-2 border-dashed border-slate-200 p-6 flex flex-col items-center text-center gap-3">
+      <p className="text-sm text-slate-500">{message}</p>
+      <Link
+        to="/"
+        className="inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+      >
+        {cta}
+        <ArrowRight className="w-3.5 h-3.5" />
+      </Link>
+    </div>
   );
 }
