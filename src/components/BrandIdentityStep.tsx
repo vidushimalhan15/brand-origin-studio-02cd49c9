@@ -21,6 +21,7 @@ import {
   analyzeBrandUrl,
   fetchPeecInsights,
 } from "@/server/brand.functions";
+import AudienceProfiles from "@/components/AudienceProfiles";
 
 type PeecPrompt = {
   prompt: string;
