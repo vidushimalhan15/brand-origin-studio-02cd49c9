@@ -346,6 +346,9 @@ export default function BrandIdentityStep() {
             </div>
           )}
 
+          {/* Audience Profiles */}
+          <AudienceProfiles brandName={brandName} introduction={intro} />
+
           {/* Footer */}
           <div className="mt-10 flex items-center justify-between border-t border-border pt-6">
             <Button variant="ghost" disabled className="rounded-xl">
