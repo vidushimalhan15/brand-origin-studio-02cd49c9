@@ -117,15 +117,6 @@ export default function BrandIdentityStep() {
     <div className="min-h-screen bg-background py-12 px-4 sm:py-16">
       <div className="mx-auto max-w-2xl">
         {/* Progress */}
-        <div className="mb-8">
-          <div className="mb-3 flex items-center justify-between text-sm">
-            <span className="font-medium text-foreground">
-              Step 1 of 4 · Brand Identity
-            </span>
-            <span className="text-muted-foreground">25%</span>
-          </div>
-          <Progress value={25} className="h-1.5" />
-        </div>
 
         {/* Card */}
         <div className="rounded-2xl border border-border bg-card p-8 shadow-elegant sm:p-10">
