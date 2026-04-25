@@ -21,6 +21,7 @@ import {
   analyzeBrandUrl,
   fetchPeecInsights,
 } from "@/server/brand.functions";
+import AudienceProfiles from "@/components/AudienceProfiles";
 
 type PeecPrompt = {
   prompt: string;
@@ -344,6 +345,9 @@ export default function BrandIdentityStep() {
               )}
             </div>
           )}
+
+          {/* Audience Profiles */}
+          <AudienceProfiles brandName={brandName} introduction={intro} />
 
           {/* Footer */}
           <div className="mt-10 flex items-center justify-between border-t border-border pt-6">

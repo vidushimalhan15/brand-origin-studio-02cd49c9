@@ -209,3 +209,64 @@ Generate the following JSON:
       };
     }
   });
+
+type SuggestedAudience = {
+  name: string;
+  roleAndIndustry: string;
+  challenge: string;
+};
+
+type SuggestAudiencesResult = {
+  audiences: SuggestedAudience[];
+  error?: string;
+};
+
+export const suggestAudiences = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      brandName: z.string().min(1).max(120),
+      introduction: z.string().min(1).max(600),
+    }),
+  )
+  .handler(async ({ data }): Promise<SuggestAudiencesResult> => {
+    const system =
+      "You are a B2B audience strategist. Given a brand and its introduction, generate 3 distinct, realistic " +
+      "target audience profiles this brand should market to. Reply with strict JSON only.";
+
+    const user = `Brand: ${data.brandName}
+Introduction: ${data.introduction}
+
+Return JSON in this exact shape:
+{
+  "audiences": [
+    {
+      "name": "Short audience label, e.g. 'Marketing Managers'",
+      "roleAndIndustry": "Role and industry context, e.g. 'Operations in Tech'",
+      "challenge": "1-2 sentence description of the primary pain point this audience faces"
+    }
+    // exactly 3 distinct audiences
+  ]
+}`;
+
+    try {
+      const raw = await callGemini(system, user);
+      const parsed = extractJson<SuggestAudiencesResult>(raw);
+      if (!parsed?.audiences?.length) {
+        return { audiences: [], error: "Could not generate audiences." };
+      }
+      return {
+        audiences: parsed.audiences.slice(0, 3).map((a) => ({
+          name: String(a.name ?? "").slice(0, 120),
+          roleAndIndustry: String(a.roleAndIndustry ?? "").slice(0, 200),
+          challenge: String(a.challenge ?? "").slice(0, 400),
+        })),
+      };
+    } catch (err) {
+      console.error("suggestAudiences failed:", err);
+      return {
+        audiences: [],
+        error:
+          err instanceof Error ? err.message : "Failed to suggest audiences.",
+      };
+    }
+  });
