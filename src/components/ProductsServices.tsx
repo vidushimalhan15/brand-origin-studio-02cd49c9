@@ -16,12 +16,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { draftProductDescription } from "@/server/brand.functions";
+import { useProducts, type Product } from "@/hooks/use-brand-store";
 
-export type Product = {
-  id: string;
-  name: string;
-  description: string;
-};
+export type { Product };
 
 type Props = {
   brandName: string;
@@ -33,7 +30,7 @@ const emptyDraft = { name: "", description: "" };
 export default function ProductsServices({ brandName, introduction }: Props) {
   const draftDescription = useServerFn(draftProductDescription);
 
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useProducts();
   const [draft, setDraft] = useState(emptyDraft);
   const [editingId, setEditingId] = useState<string | null>(null);
 
