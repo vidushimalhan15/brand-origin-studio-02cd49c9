@@ -217,7 +217,7 @@ export default function PostIdeation() {
                   <p className="text-xs text-gray-400 mt-0.5">These are real questions people typed into ChatGPT, Perplexity, etc.</p>
                 </div>
                 <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
-                  {peecData.volumeRankedPrompts.slice(0, 10).map((p, i) => {
+                  {peecData.volumeRankedPrompts.map((p, i) => {
                     const selected = selectedPeecSignals.prompts.has(i);
                     return (
                       <div
@@ -244,7 +244,7 @@ export default function PostIdeation() {
                   <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Where competitors are winning</p>
                   <p className="text-xs text-gray-400 mt-0.5">Questions where AI recommends a competitor over {brandName}. Make content here to take that spot.</p>
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
                   {peecData.chatGaps.map((gap, i) => {
                     const selected = selectedPeecSignals.chatGaps.has(i);
                     return (
@@ -264,21 +264,29 @@ export default function PostIdeation() {
               </div>
             )}
 
-            {/* UGC brief */}
+            {/* UGC brief — one line per negative point */}
             {peecData && peecData.ugcBrief && (
               <div className="space-y-2">
                 <div>
                   <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">What AI says negatively about {brandName}</p>
                   <p className="text-xs text-gray-400 mt-0.5">AI is telling people this about your brand. Create real customer stories to change this narrative.</p>
                 </div>
-                <div
-                  onClick={() => togglePeec("ugcBrief", 0)}
-                  className={`flex items-start gap-2 rounded-lg px-3 py-2 cursor-pointer transition-colors ${selectedPeecSignals.ugcBrief.has(0) ? "bg-red-100 border border-red-300" : "bg-red-50 border border-red-100 hover:border-red-200"}`}
-                >
-                  <div className={`mt-0.5 h-4 w-4 shrink-0 rounded border-2 flex items-center justify-center transition-colors ${selectedPeecSignals.ugcBrief.has(0) ? "border-red-500 bg-red-500" : "border-red-300 bg-white"}`}>
-                    {selectedPeecSignals.ugcBrief.has(0) && <svg className="h-2.5 w-2.5 text-white" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
-                  </div>
-                  <p className="text-xs text-gray-700 leading-snug">{peecData.ugcBrief}</p>
+                <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                  {peecData.ugcBrief.split("|||").filter(Boolean).map((line, i) => {
+                    const selected = selectedPeecSignals.ugcBrief.has(i);
+                    return (
+                      <div
+                        key={i}
+                        onClick={() => togglePeec("ugcBrief", i)}
+                        className={`flex items-center gap-2 rounded-lg px-3 py-2 cursor-pointer transition-colors ${selected ? "bg-red-100 border border-red-300" : "bg-red-50 border border-red-100 hover:border-red-200"}`}
+                      >
+                        <div className={`h-4 w-4 shrink-0 rounded border-2 flex items-center justify-center transition-colors ${selected ? "border-red-500 bg-red-500" : "border-red-300 bg-white"}`}>
+                          {selected && <svg className="h-2.5 w-2.5 text-white" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                        </div>
+                        <p className="text-xs text-gray-700 leading-none truncate">{line.trim()}</p>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

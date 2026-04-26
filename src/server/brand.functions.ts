@@ -251,16 +251,16 @@ export const fetchPeecInsights = createServerFn({ method: "POST" })
           },
         },
         postIdeation: {
-          volumeRankedPrompts: (d.postIdeation?.volumeRankedPrompts ?? []).slice(0, 5).map(
+          volumeRankedPrompts: (d.postIdeation?.volumeRankedPrompts ?? []).slice(0, 10).map(
             (p: { prompt?: string; text?: string; rank?: number; volume?: number | string }, i: number) => ({
               prompt: String(p.prompt ?? p.text ?? "").slice(0, 200),
               rank: typeof p.rank === "number" ? p.rank : i + 1,
               volume: String(p.volume ?? ""),
             }),
           ),
-          chatGaps: (d.postIdeation?.chatGaps ?? []).slice(0, 5).map((g: string) => String(g).slice(0, 200)),
+          chatGaps: (d.postIdeation?.chatGaps ?? []).slice(0, 10).map((g: string) => String(g).slice(0, 200)),
           ugcBrief: Array.isArray(d.postIdeation?.ugcBrief)
-            ? (d.postIdeation.ugcBrief as string[]).slice(0, 3).join(" ").slice(0, 600)
+            ? (d.postIdeation.ugcBrief as string[]).slice(0, 10).map((s: string) => String(s).slice(0, 200)).join("|||")
             : String(d.postIdeation?.ugcBrief ?? "").slice(0, 600),
         },
       };
