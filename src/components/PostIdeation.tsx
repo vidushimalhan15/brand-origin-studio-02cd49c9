@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Sparkles, Lightbulb, TrendingUp, RefreshCw } from "lucide-react";
+import { Sparkles, Lightbulb, TrendingUp, RefreshCw, ChevronUp, ChevronDown } from "lucide-react";
 import { generatePostIdeas, fetchPeecInsights } from "@/server/brand.functions";
 import type { PostIdea } from "@/server/brand.functions";
 import { loadBrandProfile, loadLatestCampaignFromDB } from "@/hooks/use-brand-store";
@@ -47,6 +47,7 @@ export default function PostIdeation() {
   // Peec AI signals
   const [peecData, setPeecData] = useState<PeecData | null>(null);
   const [isFetchingPeec, setIsFetchingPeec] = useState(false);
+  const [isPeecExpanded, setIsPeecExpanded] = useState(true);
   const [selectedPeecSignals, setSelectedPeecSignals] = useState<{
     prompts: Set<number>; chatGaps: Set<number>; ugcBrief: Set<number>;
   }>({ prompts: new Set(), chatGaps: new Set(), ugcBrief: new Set() });
@@ -186,25 +187,41 @@ export default function PostIdeation() {
       {(isFetchingPeec || peecData) && (
         <div className="rounded-2xl border border-purple-100 overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-purple-50 to-fuchsia-50 border-b border-purple-100">
+          <div
+            className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-purple-50 to-fuchsia-50 border-b border-purple-100 cursor-pointer select-none"
+            onClick={() => setIsPeecExpanded((v) => !v)}
+          >
             <div className="flex items-center gap-2">
               <span className="text-base">⚡</span>
               <div>
                 <p className="text-sm font-semibold text-purple-800">Peec AI — Post Ideation Signals</p>
-                <p className="text-xs text-purple-500">Live data from ChatGPT, Perplexity & other AI tools — used to shape your post ideas</p>
+                {isPeecExpanded && (
+                  <p className="text-xs text-purple-500">Live data from ChatGPT, Perplexity & other AI tools — used to shape your post ideas</p>
+                )}
               </div>
             </div>
-            <button
-              onClick={() => fetchPeec(brandName, introduction)}
-              disabled={isFetchingPeec}
-              className="text-purple-400 hover:text-purple-600 transition-colors disabled:opacity-40"
-              title="Refresh Peec data"
-            >
-              <RefreshCw className={`h-4 w-4 ${isFetchingPeec ? "animate-spin" : ""}`} />
-            </button>
+            <div className="flex items-center gap-2">
+              {totalSelected > 0 && !isPeecExpanded && (
+                <span className="text-xs font-medium bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                  ⚡ {totalSelected} selected
+                </span>
+              )}
+              <button
+                onClick={(e) => { e.stopPropagation(); fetchPeec(brandName, introduction); }}
+                disabled={isFetchingPeec}
+                className="text-purple-400 hover:text-purple-600 transition-colors disabled:opacity-40"
+                title="Refresh Peec data"
+              >
+                <RefreshCw className={`h-4 w-4 ${isFetchingPeec ? "animate-spin" : ""}`} />
+              </button>
+              {isPeecExpanded
+                ? <ChevronUp className="h-4 w-4 text-purple-400" />
+                : <ChevronDown className="h-4 w-4 text-purple-400" />
+              }
+            </div>
           </div>
 
-          <div className="p-4 space-y-4 bg-white">
+          {isPeecExpanded && <div className="p-4 space-y-4 bg-white">
             {isFetchingPeec && (
               <p className="text-xs text-purple-500 animate-pulse">Fetching live AI signals for {brandName}…</p>
             )}
@@ -295,7 +312,7 @@ export default function PostIdeation() {
               ? <p className="text-xs text-purple-600 font-medium pt-1">{totalSelected} signal{totalSelected !== 1 ? "s" : ""} selected — will be used in idea generation</p>
               : <p className="text-xs text-gray-400 pt-1">Click any item above to include it in your idea generation.</p>
             }
-          </div>
+          </div>}
         </div>
       )}
 
