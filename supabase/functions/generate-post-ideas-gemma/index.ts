@@ -107,23 +107,54 @@ Generate exactly ${numberOfPosts} ideas now.`;
       );
     }
 
-    // Parse — responseMimeType=application/json means rawText is already valid JSON
-    let ideas: unknown[];
-    try {
-      const parsed = JSON.parse(rawText);
-      ideas = Array.isArray(parsed) ? parsed : (parsed.ideas ?? []);
-    } catch {
-      // Fallback: strip markdown fences and try again
-      const cleaned = rawText.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
+    // Parse Gemma's plain text response — try several strategies
+    let ideas: unknown[] = [];
+    let parsed = false;
+
+    const tryParse = (text: string): unknown[] | null => {
       try {
-        const parsed = JSON.parse(cleaned);
-        ideas = Array.isArray(parsed) ? parsed : (parsed.ideas ?? []);
+        const j = JSON.parse(text);
+        return Array.isArray(j) ? j : (Array.isArray(j?.ideas) ? j.ideas : null);
       } catch {
-        return new Response(
-          JSON.stringify({ error: "Failed to parse Gemma JSON response" }),
-          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
+        return null;
       }
+    };
+
+    // 1. Direct parse
+    const direct = tryParse(rawText);
+    if (direct) { ideas = direct; parsed = true; }
+
+    // 2. Strip markdown fences ```json ... ```
+    if (!parsed) {
+      const stripped = rawText.replace(/^```[a-zA-Z]*\s*/m, "").replace(/\s*```\s*$/m, "").trim();
+      const r = tryParse(stripped);
+      if (r) { ideas = r; parsed = true; }
+    }
+
+    // 3. Extract first [...] block (handles prose before/after)
+    if (!parsed) {
+      const match = rawText.match(/(\[[\s\S]*\])/);
+      if (match) {
+        const r = tryParse(match[1]);
+        if (r) { ideas = r; parsed = true; }
+      }
+    }
+
+    // 4. Extract first {...} block (wrapped object)
+    if (!parsed) {
+      const match = rawText.match(/(\{[\s\S]*\})/);
+      if (match) {
+        const r = tryParse(match[1]);
+        if (r) { ideas = r; parsed = true; }
+      }
+    }
+
+    if (!parsed || ideas.length === 0) {
+      console.error("[gemma] raw response (first 1000):", rawText.slice(0, 1000));
+      return new Response(
+        JSON.stringify({ error: "Failed to parse Gemma JSON response", raw: rawText.slice(0, 500) }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     return new Response(
