@@ -28,7 +28,7 @@ serve(async (req) => {
     const fmt = (d: Date) => d.toISOString().split('T')[0];
     const today = new Date();
     const startDate = new Date(today);
-    startDate.setDate(today.getDate() - 30);
+    startDate.setDate(today.getDate() - 90);
 
     // ── 1. Fetch brands ──────────────────────────────────────────────────────
     const brandsRes = await fetch(`${PEEC_BASE_URL}/brands?limit=50`, { headers });
@@ -96,7 +96,7 @@ serve(async (req) => {
     let ugcBrief: string[] = [];
 
     if (matchedBrand) {
-      const chatsUrl = `${PEEC_BASE_URL}/chats?brand_id=${matchedBrand.id}&limit=50&start_date=${fmt(startDate)}&end_date=${fmt(today)}`;
+      const chatsUrl = `${PEEC_BASE_URL}/chats?brand_id=${matchedBrand.id}&limit=100&start_date=${fmt(startDate)}&end_date=${fmt(today)}`;
       const chatsRes = await fetch(chatsUrl, { headers });
       const chatsData = chatsRes.ok ? await chatsRes.json() : {};
       const recentChats: any[] = chatsData.data || chatsData.chats || [];
@@ -104,7 +104,7 @@ serve(async (req) => {
 
       // ── 6. Fetch chat content: question + position + UGC objections ──────
       const rawResults = await Promise.all(
-        recentChats.slice(0, 30).map(async (chat: any) => {
+        recentChats.slice(0, 50).map(async (chat: any) => {
           try {
             const contentRes = await fetch(`${PEEC_BASE_URL}/chats/${chat.id}/content`, { headers });
             const contentData = contentRes.ok ? await contentRes.json() : {};
@@ -151,7 +151,7 @@ serve(async (req) => {
           seen.set(key, r);
         }
       }
-      const promptResults = Array.from(seen.values()).slice(0, 10);
+      const promptResults = Array.from(seen.values()).slice(0, 20);
       console.log('[peec] prompt results:', JSON.stringify(promptResults).substring(0, 500));
 
       // ── 7. volumeRankedPrompts from chat questions (sorted by best position) ──
@@ -167,7 +167,7 @@ serve(async (req) => {
       chatGaps = promptResults
         .filter((r) => r.absent || (r.position != null && r.position > 2))
         .map((r) => ({ prompt: r.prompt, competitorWins: r.competitorWins || [] }))
-        .slice(0, 5);
+        .slice(0, 10);
 
       // ── 8. UGC brief from assistant objection messages ───────────────────
       const negativeKeywords = [
@@ -207,7 +207,7 @@ serve(async (req) => {
         }
       }
       // Deduplicate and cap at 10
-      ugcBrief = [...new Set(objectionLines)].slice(0, 10);
+      ugcBrief = [...new Set(objectionLines)].slice(0, 15);
       console.log('[peec] ugcBrief count:', ugcBrief.length);
 
       // ── 9. Derive content mix recommendations ────────────────────────────
