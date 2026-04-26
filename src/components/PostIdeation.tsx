@@ -502,6 +502,7 @@ function IdeaCard({ idea, index, campaignPlatforms, isSaved, onSave, onDelete, o
 }) {
   const [showStrategy, setShowStrategy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showFormats, setShowFormats] = useState(false);
 
   // Normalise platform string — may be "Instagram" or "Instagram, LinkedIn" etc.
   const platforms = idea.platform.split(/[,/]/).map((p) => p.trim()).filter(Boolean);
@@ -593,22 +594,36 @@ function IdeaCard({ idea, index, campaignPlatforms, isSaved, onSave, onDelete, o
 
         {/* Platform + format selector section */}
         <div className="mb-4">
-          {/* Platform badges */}
+          {/* Clickable platform badges */}
           <div className="flex flex-wrap gap-1.5 mb-2">
-            {platforms.map((p) => (
-              <span
-                key={p}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium ${PLATFORM_COLORS[p] ?? "bg-slate-100 text-slate-700"}`}
-              >
-                {getPlatformIcon(p.toLowerCase().replace("x/twitter", "x").replace("blog post", "blog"), "h-3 w-3")}
-                {p}
-              </span>
-            ))}
+            {platforms.map((p) => {
+              const hasFormats = (PLATFORM_FORMATS[p] ?? []).length > 1;
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); if (hasFormats) setShowFormats((v) => !v); }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                    showFormats
+                      ? "bg-indigo-50 border-indigo-300 text-indigo-700 shadow-sm"
+                      : "bg-white border-gray-200 text-gray-700 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
+                  } ${hasFormats ? "cursor-pointer" : "cursor-default"}`}
+                >
+                  {getPlatformIcon(p.toLowerCase().replace("x/twitter", "x").replace("blog post", "blog"), "h-3.5 w-3.5")}
+                  {p}
+                  {hasFormats && (
+                    <svg className={`h-3 w-3 transition-transform ${showFormats ? "rotate-180" : ""}`} viewBox="0 0 10 10" fill="none">
+                      <path d="M2 4l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
-          {/* Format chips — shown when formats are available */}
-          {availableFormats.length > 1 && (
-            <div className="flex flex-wrap gap-1.5">
+          {/* Format chips — shown when platform badge is clicked */}
+          {showFormats && availableFormats.length > 1 && (
+            <div className="flex flex-wrap gap-1.5 pt-1">
               {availableFormats.map((fmt) => {
                 const active = selectedFormat === fmt;
                 return (
@@ -616,7 +631,7 @@ function IdeaCard({ idea, index, campaignPlatforms, isSaved, onSave, onDelete, o
                     key={fmt}
                     type="button"
                     onClick={(e) => { e.stopPropagation(); onFormatChange(fmt); }}
-                    className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full border transition-colors ${
+                    className={`text-[11px] font-medium px-2.5 py-1 rounded-full border transition-colors ${
                       active
                         ? "bg-indigo-600 text-white border-indigo-600"
                         : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600"
