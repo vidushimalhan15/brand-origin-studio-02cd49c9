@@ -243,6 +243,64 @@ export default function PostGeneration() {
   );
 }
 
+function SlideBox({
+  label,
+  content,
+  borderColor = "border-l-blue-500",
+}: {
+  label: string;
+  content: string;
+  borderColor?: string;
+}) {
+  const [copied, setCopied] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(content);
+
+  // parse bold headline from "Headline.\n\nBody" pattern
+  const parts = content.split(/\n\n/);
+  const headline = parts.length > 1 ? parts[0] : null;
+  const body = parts.length > 1 ? parts.slice(1).join("\n\n") : content;
+
+  return (
+    <div className={`rounded-lg border border-gray-100 border-l-4 ${borderColor} bg-white shadow-sm`}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+        <span className="text-sm font-semibold text-gray-800">{label}</span>
+        <div className="flex gap-1">
+          <button
+            onClick={() => { navigator.clipboard.writeText(content); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
+            className="p-1.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+          </button>
+          <button
+            onClick={() => setEditing((v) => !v)}
+            className="p-1.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            <Edit2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+      {/* Content */}
+      <div className="px-4 py-3">
+        {editing ? (
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            rows={4}
+            className="w-full text-sm text-gray-700 bg-white border border-indigo-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-100 resize-none leading-relaxed"
+          />
+        ) : (
+          <div className="text-gray-700 leading-relaxed">
+            {headline && <p className="font-semibold text-gray-900 mb-1.5 text-sm">{headline}</p>}
+            <p className="text-sm whitespace-pre-wrap">{body}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function PostCard({
   post,
   idea,
@@ -260,172 +318,140 @@ function PostCard({
   onDelete: () => void;
   onContentChange: (c: string) => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(post.content);
-  const [copied, setCopied] = useState(false);
+  const [captionCopied, setCaptionCopied] = useState(false);
 
   useEffect(() => {
     if (!editing) setDraft(post.content);
   }, [post.content]);
 
-  function saveEdit() {
-    onContentChange(draft);
-    setEditing(false);
-  }
-
-  function copyContent() {
-    navigator.clipboard.writeText(post.content);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  }
+  function saveEdit() { onContentChange(draft); setEditing(false); }
 
   const platformKey = post.platform.toLowerCase().replace("/twitter", "").replace("x/", "x").trim();
   const PlatformIcon = getPlatformIcon(platformKey, "h-3.5 w-3.5");
   const isCarousel = post.slides && post.slides.length > 0;
-  const snippet = post.content?.slice(0, 90) + (post.content?.length > 90 ? "…" : "");
+  const snippet = (isCarousel ? post.slides![0]?.content : post.content)?.slice(0, 100) ?? "";
 
   return (
-    <div className={`rounded-2xl border shadow-sm overflow-hidden transition-colors ${post.approved ? "border-emerald-300 bg-emerald-50/40" : "border-slate-200 bg-white"}`}>
-      {/* ── Compact summary row ── */}
-      <div className="px-4 pt-3 pb-3">
-        {/* Row 1: Post label + action icons */}
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full">
-              {idea?.title ? idea.title.slice(0, 28) : post.title.slice(0, 28)}
+    <div className={`rounded-2xl border shadow-sm bg-white overflow-hidden transition-colors ${post.approved ? "border-emerald-300" : "border-gray-100 hover:border-gray-200 hover:shadow-md"}`}>
+      {/* ── Summary card header ── */}
+      <div className="p-5">
+        {/* Row 1: Post N badge + status + actions */}
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="bg-blue-50 text-blue-700 text-xs font-medium px-2.5 py-0.5 rounded-full">
+              {post.title.slice(0, 32)}
             </span>
+            {post.peecSource === "ai_visibility" && (
+              <span className="bg-purple-100 text-purple-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">⚡ AI Visibility</span>
+            )}
+            {post.peecSource === "reputation_fix" && (
+              <span className="bg-red-100 text-red-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">⚡ Reputation Fix</span>
+            )}
             {post.approved && (
-              <span className="flex items-center gap-1 bg-emerald-100 text-emerald-700 text-[11px] font-semibold px-2 py-0.5 rounded-full">
-                <CheckCircle className="h-2.5 w-2.5" /> Approved
+              <span className="flex items-center gap-1 bg-emerald-100 text-emerald-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                <CheckCircle className="h-3 w-3" /> Approved
               </span>
             )}
           </div>
-          <div className="flex items-center gap-0.5">
-            <button onClick={onRegenerate} disabled={isRegenerating} title="Regenerate" className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-40">
+          <div className="flex items-center gap-1 shrink-0">
+            <button onClick={onRegenerate} disabled={isRegenerating} title="Regenerate" className="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-40">
               {isRegenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
             </button>
-            <button onClick={copyContent} title="Copy" className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition-colors">
-              {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-            </button>
-            <button
-              onClick={onApprove}
-              title={post.approved ? "Unapprove" : "Approve"}
-              className={`p-1.5 rounded-lg transition-colors ${post.approved ? "text-emerald-600 bg-emerald-50" : "text-slate-400 hover:text-emerald-600 hover:bg-emerald-50"}`}
-            >
+            <button onClick={onApprove} title={post.approved ? "Unapprove" : "Approve"}
+              className={`p-1.5 rounded-lg transition-colors ${post.approved ? "text-emerald-600 bg-emerald-50" : "text-gray-400 hover:text-emerald-600 hover:bg-emerald-50"}`}>
               <CheckCircle className="h-3.5 w-3.5" />
             </button>
-            <button onClick={onDelete} title="Delete" className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors">
+            <button onClick={onDelete} title="Delete" className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors">
               <Trash2 className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
 
-        {/* Row 2: platform + content type badges */}
-        <div className="flex items-center gap-1.5 mb-2">
-          <span className="flex items-center gap-1 bg-slate-100 text-slate-600 text-[11px] font-medium px-2 py-0.5 rounded-full">
+        {/* Row 2: platform + format badges */}
+        <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-1 text-xs text-gray-500">
             {PlatformIcon}
-            {post.platform}
-          </span>
-          <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${CONTENT_TYPE_COLORS[post.contentType] ?? "bg-gray-100 text-gray-700"}`}>
+            <span>{post.platform}</span>
+          </div>
+          <span className="bg-gray-50 text-gray-600 text-xs border border-gray-100 px-2.5 py-0.5 rounded-full">
             {post.contentType}
           </span>
-          {post.peecSource === "ai_visibility" && (
-            <span className="bg-purple-100 text-purple-700 text-[11px] font-semibold px-2 py-0.5 rounded-full">⚡ AI Visibility</span>
-          )}
-          {post.peecSource === "reputation_fix" && (
-            <span className="bg-red-100 text-red-700 text-[11px] font-semibold px-2 py-0.5 rounded-full">⚡ Reputation Fix</span>
-          )}
         </div>
 
-        {/* Row 3: snippet text */}
-        <p className="text-[13px] text-slate-600 leading-snug mb-2">{snippet}</p>
+        {/* Row 3: snippet preview */}
+        <p className="text-xs text-gray-600 line-clamp-3 mb-3 leading-relaxed">{snippet}</p>
 
-        {/* Row 4: divider + slide count + Ready badge + expand */}
-        <div className="border-t border-slate-100 pt-2 flex items-center justify-between">
-          <span className="text-xs text-slate-400">
+        {/* Row 4: divider + slide count + Ready */}
+        <div className="border-t border-gray-100 pt-3 flex items-center justify-between">
+          <span className="text-xs text-gray-400">
             {isCarousel ? `${post.slides!.length} slides` : "Text post"}
           </span>
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full">
-              Ready
-            </span>
-            <button
-              onClick={() => setExpanded((v) => !v)}
-              className="text-[11px] text-slate-400 hover:text-slate-700 transition-colors flex items-center gap-0.5"
-            >
-              {expanded ? "Hide" : "View"} <ChevronRight className={`h-3 w-3 transition-transform ${expanded ? "rotate-90" : ""}`} />
-            </button>
-          </div>
+          <span className="bg-indigo-50 text-indigo-600 text-xs font-semibold px-3 py-0.5 rounded-full">Ready</span>
         </div>
       </div>
 
-      {/* ── Expanded detail ── */}
-      {expanded && (
-        <div className="border-t border-slate-100 px-4 py-3 bg-slate-50/60 space-y-4">
-          {/* Slides */}
-          {isCarousel && (
-            <div>
-              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2">Asset text</p>
-              <div className="space-y-0">
-                {post.slides!.map((slide, i) => (
-                  <div key={i} className={`py-3 ${i < post.slides!.length - 1 ? "border-b border-slate-200" : ""}`}>
-                    <div className="flex items-start justify-between">
-                      <p className="text-xs font-semibold text-slate-400 mb-1">Slide {i + 1}</p>
-                      <Copy className="h-3 w-3 text-slate-300 cursor-pointer hover:text-slate-500" onClick={() => navigator.clipboard.writeText(slide.content)} />
-                    </div>
-                    <p className="text-[13px] text-slate-700 whitespace-pre-wrap leading-relaxed">{slide.content}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+      {/* ── Slide boxes + caption ── */}
+      <div className="border-t border-gray-100 px-5 py-4 bg-gray-50/50 space-y-3">
+        {/* Carousel slides */}
+        {isCarousel && post.slides!.map((slide, i) => (
+          <SlideBox
+            key={i}
+            label={`Slide ${i + 1}`}
+            content={slide.content}
+            borderColor="border-l-blue-500"
+          />
+        ))}
 
-          {/* Caption */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Caption</p>
-              <div className="flex items-center gap-1">
-                {editing ? (
-                  <>
-                    <button onClick={saveEdit} className="p-1 rounded text-emerald-600 hover:bg-emerald-50 transition-colors">
-                      <Save className="h-3 w-3" />
-                    </button>
-                    <button onClick={() => { setEditing(false); setDraft(post.content); }} className="p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors">
-                      <X className="h-3 w-3" />
-                    </button>
-                  </>
-                ) : (
-                  <button onClick={() => setEditing(true)} className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">
-                    <Edit2 className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
+        {/* Caption box */}
+        <div className="rounded-lg border border-gray-100 border-l-4 border-l-green-500 bg-white shadow-sm">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+            <div className="flex items-center gap-1.5">
+              <FileText className="h-3.5 w-3.5 text-green-600" />
+              <span className="text-sm font-semibold text-gray-800">Caption</span>
             </div>
+            <div className="flex gap-1">
+              <button
+                onClick={() => { navigator.clipboard.writeText(post.content); setCaptionCopied(true); setTimeout(() => setCaptionCopied(false), 1500); }}
+                className="p-1.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                {captionCopied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+              </button>
+              {editing ? (
+                <>
+                  <button onClick={saveEdit} className="p-1.5 rounded text-emerald-600 hover:bg-emerald-50 transition-colors"><Save className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => { setEditing(false); setDraft(post.content); }} className="p-1.5 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"><X className="h-3.5 w-3.5" /></button>
+                </>
+              ) : (
+                <button onClick={() => setEditing(true)} className="p-1.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors"><Edit2 className="h-3.5 w-3.5" /></button>
+              )}
+            </div>
+          </div>
+          <div className="px-4 py-3">
             {editing ? (
               <textarea
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 rows={5}
-                className="w-full text-[13px] text-gray-700 bg-white border border-indigo-300 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-100 resize-none leading-relaxed"
+                className="w-full text-sm text-gray-700 bg-white border border-indigo-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-100 resize-none leading-relaxed"
               />
             ) : (
-              <p className="text-[13px] text-gray-600 leading-relaxed whitespace-pre-wrap">{post.content}</p>
+              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                {post.content || <span className="text-gray-400 italic">No caption yet.</span>}
+              </p>
             )}
           </div>
-
           {/* Hashtags */}
           {post.hashtags && post.hashtags.length > 0 && !editing && (
-            <div className="flex flex-wrap gap-1.5">
+            <div className="px-4 pb-3 flex flex-wrap gap-1.5">
               {post.hashtags.map((tag) => (
-                <span key={tag} className="text-[11px] text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
-                  #{tag}
-                </span>
+                <span key={tag} className="text-[11px] text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">#{tag}</span>
               ))}
             </div>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
