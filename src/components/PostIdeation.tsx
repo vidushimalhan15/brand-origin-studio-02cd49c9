@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Sparkles, Lightbulb, RefreshCw, ChevronUp, ChevronDown } from "lucide-react";
+import { Sparkles, Lightbulb, RefreshCw, ChevronUp, ChevronDown, Target, Copy, Trash2, Edit2, Calendar } from "lucide-react";
 import { generatePostIdeas, fetchPeecInsights } from "@/server/brand.functions";
 import type { PostIdea } from "@/server/brand.functions";
 import { loadBrandProfile, loadLatestCampaignFromDB } from "@/hooks/use-brand-store";
@@ -350,8 +350,8 @@ export default function PostIdeation() {
             <span className="text-xs text-gray-400">Click bookmark to save</span>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            {ideas.map((idea) => (
-              <IdeaCard key={idea.id} idea={idea} onSave={() => saveIdea(idea)} variant="suggestion" />
+            {ideas.map((idea, i) => (
+              <IdeaCard key={idea.id} idea={idea} index={i + 1} onSave={() => saveIdea(idea)} onDelete={() => setIdeas(prev => prev.filter(x => x.id !== idea.id))} variant="suggestion" />
             ))}
           </div>
         </div>
@@ -367,8 +367,8 @@ export default function PostIdeation() {
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            {savedIdeas.map((idea) => (
-              <IdeaCard key={idea.id} idea={idea} onSave={() => unsaveIdea(idea.id)} variant="saved" />
+            {savedIdeas.map((idea, i) => (
+              <IdeaCard key={idea.id} idea={idea} index={i + 1} onSave={() => unsaveIdea(idea.id)} onDelete={() => unsaveIdea(idea.id)} variant="saved" />
             ))}
           </div>
         </div>
@@ -377,9 +377,10 @@ export default function PostIdeation() {
   );
 }
 
-function IdeaCard({ idea, onSave, variant }: {
-  idea: PostIdea; onSave: () => void; variant: "suggestion" | "saved";
+function IdeaCard({ idea, index, onSave, onDelete, variant }: {
+  idea: PostIdea; index: number; onSave: () => void; onDelete: () => void; variant: "suggestion" | "saved";
 }) {
+  const [showStrategy, setShowStrategy] = useState(false);
   const [copied, setCopied] = useState(false);
 
   function copyCaption() {
@@ -389,58 +390,112 @@ function IdeaCard({ idea, onSave, variant }: {
   }
 
   return (
-    <div className={`rounded-xl border p-3.5 space-y-2.5 transition-shadow hover:shadow-sm ${
-      variant === "saved"
-        ? "border-emerald-200 bg-emerald-50/60"
-        : "border-slate-200 bg-white hover:border-indigo-200"
-    }`}>
-      {/* Title + actions */}
-      <div className="flex items-start justify-between gap-2">
-        <span className="text-sm font-semibold text-slate-800 leading-snug">{idea.title}</span>
-        <div className="flex items-center gap-1 shrink-0">
-          <button
-            onClick={copyCaption}
-            title="Copy caption"
-            className="w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
-          >
-            {copied
-              ? <svg className="h-3.5 w-3.5 text-emerald-500" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-              : <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none"><rect x="5" y="5" width="8" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><path d="M3 11V3h8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
-            }
-          </button>
-          <button
+    <div className="rounded-2xl border border-gray-100 bg-white shadow-sm text-gray-900 overflow-hidden">
+      <div className="p-4">
+        {/* Top row: badges left, checkbox right */}
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="bg-blue-100 text-blue-700 font-medium rounded-full px-2.5 py-0.5 text-xs">
+              Post {index}
+            </span>
+            {idea.contentType && (
+              <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${CONTENT_TYPE_COLORS[idea.contentType] ?? "bg-gray-100 text-gray-700"}`}>
+                {idea.contentType}
+              </span>
+            )}
+            {/* Peec badge if pillar hints at it */}
+            {idea.pillar?.toLowerCase().includes("reputation") && (
+              <span className="bg-red-100 text-red-700 rounded-full px-2.5 py-0.5 text-xs font-semibold">
+                ⚡ Peec · Reputation Fix
+              </span>
+            )}
+          </div>
+          {/* Checkbox */}
+          <div
             onClick={onSave}
-            title={variant === "saved" ? "Remove" : "Save idea"}
-            className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors ${
-              variant === "saved"
-                ? "text-emerald-500 hover:bg-emerald-100"
-                : "text-gray-400 hover:bg-indigo-50 hover:text-indigo-600"
+            className={`w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer transition-colors shrink-0 mt-0.5 ${
+              variant === "saved" ? "border-indigo-500 bg-indigo-500" : "border-gray-300 hover:border-indigo-400"
             }`}
           >
-            {variant === "saved"
-              ? <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2h10a1 1 0 011 1v11l-5-2.5L4 14V3a1 1 0 011-1z"/></svg>
-              : <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none"><path d="M3 2h10a1 1 0 011 1v11l-5-2.5L4 14V3a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>
-            }
+            {variant === "saved" && (
+              <svg className="h-3 w-3 text-white" viewBox="0 0 10 10" fill="none">
+                <path d="M2 5l2.5 2.5L8 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
+          </div>
+        </div>
+
+        {/* Title + description */}
+        <div className="space-y-1.5 mb-4">
+          <h4 className="font-semibold text-base leading-snug">{idea.title}</h4>
+          <p className="text-sm text-gray-600 leading-relaxed">
+            {idea.hook ? `${idea.hook} ${idea.caption}` : idea.caption}
+          </p>
+        </div>
+
+        {/* Strategy details collapse */}
+        {showStrategy && (
+          <div className="mb-4 bg-gray-50 rounded-xl p-3 space-y-2 text-xs border border-gray-100">
+            {idea.pillar && (
+              <div className="flex items-start gap-2">
+                <span className="text-gray-500 font-medium whitespace-nowrap">🏛️ Pillar:</span>
+                <span className="bg-slate-100 text-slate-700 rounded-full px-2 py-0.5">{idea.pillar}</span>
+              </div>
+            )}
+            {idea.hook && (
+              <div className="flex items-start gap-2">
+                <span className="text-gray-500 font-medium whitespace-nowrap">🪝 Hook:</span>
+                <span className="text-gray-700 italic">"{idea.hook}"</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Platform badges */}
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          {idea.platform.split(/[,/]/).map((p) => p.trim()).filter(Boolean).map((p) => (
+            <span key={p} className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium ${PLATFORM_COLORS[p] ?? PLATFORM_COLORS[idea.platform] ?? "bg-slate-100 text-slate-700"}`}>
+              {p}
+            </span>
+          ))}
+        </div>
+
+        {/* Bottom action bar */}
+        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+          <button
+            onClick={() => setShowStrategy(!showStrategy)}
+            className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors h-7 px-1"
+          >
+            <Target className="h-3 w-3" />
+            Strategy details
           </button>
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={copyCaption}
+              title="Copy"
+              className="h-7 w-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+            >
+              {copied
+                ? <svg className="h-3.5 w-3.5 text-emerald-500" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                : <Copy className="h-3.5 w-3.5" />
+              }
+            </button>
+            <button title="Schedule" className="h-7 w-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
+              <Calendar className="h-3.5 w-3.5" />
+            </button>
+            <button title="Edit" className="h-7 w-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
+              <Edit2 className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={onDelete}
+              title="Delete"
+              className="h-7 w-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       </div>
-
-      {/* Tags */}
-      <div className="flex flex-wrap gap-1">
-        <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${PLATFORM_COLORS[idea.platform] ?? "bg-slate-100 text-slate-700"}`}>{idea.platform}</span>
-        <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${CONTENT_TYPE_COLORS[idea.contentType] ?? "bg-slate-100 text-slate-700"}`}>{idea.contentType}</span>
-        {idea.pillar && <span className="px-2 py-0.5 rounded-full text-[11px] bg-indigo-50 text-indigo-600 border border-indigo-100">{idea.pillar}</span>}
-      </div>
-
-      {/* Hook */}
-      {idea.hook && (
-        <p className="text-xs font-medium text-slate-700 bg-slate-50 rounded-lg px-2.5 py-1.5 border border-slate-100 leading-snug">
-          "{idea.hook}"
-        </p>
-      )}
-
-      {/* Caption */}
-      <p className="text-xs text-slate-500 leading-relaxed">{idea.caption}</p>
     </div>
   );
 }
