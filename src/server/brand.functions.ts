@@ -121,7 +121,7 @@ export const analyzeBrandUrl = createServerFn({ method: "POST" })
 
       const scraped = result.data.data[0];
       const brandName = String(scraped.extracted_brand_name ?? "").slice(0, 120);
-      const introduction = String(scraped.openai_processed_summary ?? scraped.textContent ?? "").slice(0, 600);
+      const introduction = String(scraped.openai_processed_summary ?? scraped.textContent ?? "").slice(0, 2000);
 
       if (!brandName && !introduction) {
         return { brandName: "", introduction: "", error: "Could not extract brand details from this URL." };
@@ -171,7 +171,7 @@ export const fetchPeecInsights = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       brandName: z.string().min(1).max(120),
-      introduction: z.string().min(1).max(600),
+      introduction: z.string().min(1).max(2000),
     }),
   )
   .handler(async ({ data }): Promise<PeecInsightsFull> => {
@@ -295,7 +295,7 @@ export const suggestAudiences = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       brandName: z.string().min(1).max(120),
-      introduction: z.string().min(1).max(600),
+      introduction: z.string().min(1).max(2000),
     }),
   )
   .handler(async ({ data }): Promise<SuggestAudiencesResult> => {
@@ -399,7 +399,7 @@ export const autoAnalyzePillars = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       brandName: z.string().min(1).max(120),
-      introduction: z.string().min(1).max(600),
+      introduction: z.string().min(1).max(2000),
       campaignName: z.string().max(120).optional().default(""),
     }),
   )
@@ -436,8 +436,8 @@ export const draftProductDescription = createServerFn({ method: "POST" })
     z.object({
       productName: z.string().min(1).max(120),
       brandName: z.string().max(120).optional().default(""),
-      introduction: z.string().max(600).optional().default(""),
-      currentDescription: z.string().max(600).optional().default(""),
+      introduction: z.string().max(2000).optional().default(""),
+      currentDescription: z.string().max(2000).optional().default(""),
     }),
   )
   .handler(async ({ data }): Promise<DraftDescriptionResult> => {
@@ -603,7 +603,7 @@ export const generatePostContent = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       brandName: z.string().min(1).max(120),
-      introduction: z.string().max(600).optional().default(""),
+      introduction: z.string().max(2000).optional().default(""),
       idea: z.object({
         id: z.string(),
         title: z.string(),
@@ -694,7 +694,7 @@ export const generatePostIdeas = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       brandName: z.string().min(1).max(120),
-      introduction: z.string().max(600).optional().default(""),
+      introduction: z.string().max(2000).optional().default(""),
       platforms: z.array(z.string()).optional().default([]),
       contentPillars: z.array(z.string()).optional().default([]),
       trendingContext: z.string().max(4000).optional().default(""),
