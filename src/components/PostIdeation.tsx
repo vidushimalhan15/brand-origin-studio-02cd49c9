@@ -23,6 +23,7 @@ const CONTENT_TYPE_COLORS: Record<string, string> = {
 };
 
 function readLocal<T>(key: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
   try { return JSON.parse(localStorage.getItem(key) ?? "null") ?? fallback; } catch { return fallback; }
 }
 
