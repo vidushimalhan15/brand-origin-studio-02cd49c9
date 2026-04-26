@@ -614,6 +614,7 @@ export const generatePostContent = createServerFn({ method: "POST" })
         hook: z.string(),
         peecSource: z.enum(["ai_visibility", "reputation_fix"]).nullable().optional(),
         peecSignal: z.string().optional(),
+        contentFormat: z.string().optional(),
       }),
     }),
   )
@@ -642,7 +643,7 @@ export const generatePostContent = createServerFn({ method: "POST" })
           brandName: data.brandName,
           introduction: data.introduction,
           idea: data.idea,
-          contentFormat: "Text Post",
+          contentFormat: data.idea.contentFormat ?? "Text Post",
           length: "Medium",
         }),
       });
@@ -677,6 +678,7 @@ export type PostIdea = {
   hook: string;
   peecSource?: "ai_visibility" | "reputation_fix" | null;
   peecSignal?: string; // the specific question/negative point this idea addresses
+  contentFormat?: string; // selected sub-format (Carousel, Single Image, Stories, etc.)
 };
 
 type GeneratePostIdeasResult = {

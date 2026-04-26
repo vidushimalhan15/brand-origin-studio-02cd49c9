@@ -70,6 +70,7 @@ export default function PostGeneration() {
             hook: idea.hook,
             peecSource: idea.peecSource ?? null,
             peecSignal: idea.peecSignal,
+            contentFormat: idea.contentFormat,
           },
         },
       });

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Sparkles, Lightbulb, RefreshCw, ChevronUp, ChevronDown, Target, Copy, Trash2, Edit2, Calendar, Check, ChevronRight, Loader2 } from "lucide-react";
+import { Sparkles, Lightbulb, RefreshCw, ChevronUp, ChevronDown, Target, Copy, Trash2, Edit2, Check, ChevronRight, Loader2 } from "lucide-react";
 import { generatePostIdeas, fetchPeecInsights } from "@/server/brand.functions";
 import type { PostIdea } from "@/server/brand.functions";
 import { loadBrandProfile, loadLatestCampaignFromDB, loadPostIdeationState, savePostIdeationState } from "@/hooks/use-brand-store";
@@ -226,6 +226,12 @@ export default function PostIdeation() {
     );
   }
 
+  function updateIdeaFormat(ideaId: string, format: string) {
+    // Update in both ideas and savedIdeas so the selected format persists
+    setIdeas((prev) => prev.map((i) => i.id === ideaId ? { ...i, contentFormat: format } : i));
+    setSavedIdeas((prev) => prev.map((i) => i.id === ideaId ? { ...i, contentFormat: format } : i));
+  }
+
   return (
     <div className="space-y-4 pb-16">
       {/* Header */}
@@ -436,6 +442,7 @@ export default function PostIdeation() {
                 isSaved={!!savedIdeas.find((s) => s.id === idea.id)}
                 onSave={() => toggleSaveIdea(idea)}
                 onDelete={() => setIdeas((prev) => prev.filter((x) => x.id !== idea.id))}
+                onFormatChange={(fmt) => updateIdeaFormat(idea.id, fmt)}
               />
             ))}
           </div>
@@ -465,16 +472,41 @@ export default function PostIdeation() {
   );
 }
 
-function IdeaCard({ idea, index, campaignPlatforms, isSaved, onSave, onDelete }: {
+// ── Platform → available content formats (mirrors SocialFlow contentFormats.ts) ──
+const PLATFORM_FORMATS: Record<string, string[]> = {
+  Instagram:  ["Carousel", "Single Image", "Short Video (Reel)", "Stories"],
+  Facebook:   ["Carousel", "Single Image", "Short Video (Reel)", "Stories"],
+  LinkedIn:   ["Carousel", "Single Image Post", "Text Post", "Poll"],
+  "X/Twitter": ["Text Post"],
+  TikTok:     ["Short Video (15-60s)", "Photo Mode"],
+  YouTube:    ["Short Video (Reel)", "Long Video"],
+  "Blog Post": ["Blog Post"],
+  Newsletter:  ["Newsletter"],
+};
+
+function getDefaultFormat(platform: string): string {
+  return PLATFORM_FORMATS[platform]?.[0] ?? "Text Post";
+}
+
+function IdeaCard({ idea, index, campaignPlatforms, isSaved, onSave, onDelete, onFormatChange }: {
   idea: PostIdea & { peecSource?: string | null; peecSignal?: string };
   index: number;
   campaignPlatforms: string[];
   isSaved: boolean;
   onSave: () => void;
   onDelete: () => void;
+  onFormatChange: (format: string) => void;
 }) {
   const [showStrategy, setShowStrategy] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Normalise platform string — may be "Instagram" or "Instagram, LinkedIn" etc.
+  const platforms = idea.platform.split(/[,/]/).map((p) => p.trim()).filter(Boolean);
+  const firstPlatform = platforms[0] ?? idea.platform;
+
+  // Selected format — default to first option for the platform
+  const selectedFormat = idea.contentFormat ?? getDefaultFormat(firstPlatform);
+  const availableFormats = PLATFORM_FORMATS[firstPlatform] ?? [];
 
   function copyCaption() {
     navigator.clipboard.writeText(`${idea.hook}\n\n${idea.caption}`);
@@ -497,18 +529,12 @@ function IdeaCard({ idea, index, campaignPlatforms, isSaved, onSave, onDelete }:
               </span>
             )}
             {idea.peecSource === "reputation_fix" && (
-              <span
-                className="bg-red-100 text-red-700 rounded-full px-2.5 py-0.5 text-xs font-semibold"
-                title={idea.peecSignal ?? "Counters a negative AI narrative about this brand"}
-              >
+              <span className="bg-red-100 text-red-700 rounded-full px-2.5 py-0.5 text-xs font-semibold" title={idea.peecSignal}>
                 ⚡ Peec · Reputation Fix
               </span>
             )}
             {idea.peecSource === "ai_visibility" && (
-              <span
-                className="bg-purple-100 text-purple-700 rounded-full px-2.5 py-0.5 text-xs font-semibold"
-                title={idea.peecSignal ?? "Addresses a real AI question about this brand"}
-              >
+              <span className="bg-purple-100 text-purple-700 rounded-full px-2.5 py-0.5 text-xs font-semibold" title={idea.peecSignal}>
                 ⚡ Peec · AI Visibility
               </span>
             )}
@@ -562,13 +588,42 @@ function IdeaCard({ idea, index, campaignPlatforms, isSaved, onSave, onDelete }:
           </div>
         )}
 
-        {/* Platform badges */}
-        <div className="flex flex-wrap gap-1.5 mb-4">
-          {idea.platform.split(/[,/]/).map((p) => p.trim()).filter(Boolean).map((p) => (
-            <span key={p} className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium ${PLATFORM_COLORS[p] ?? PLATFORM_COLORS[idea.platform] ?? "bg-slate-100 text-slate-700"}`}>
-              {p}
-            </span>
-          ))}
+        {/* Platform + format selector section */}
+        <div className="mb-4">
+          {/* Platform badges */}
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {platforms.map((p) => (
+              <span
+                key={p}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium ${PLATFORM_COLORS[p] ?? "bg-slate-100 text-slate-700"}`}
+              >
+                {getPlatformIcon(p.toLowerCase().replace("x/twitter", "x").replace("blog post", "blog"), "h-3 w-3")}
+                {p}
+              </span>
+            ))}
+          </div>
+
+          {/* Format chips — shown when formats are available */}
+          {availableFormats.length > 1 && (
+            <div className="flex flex-wrap gap-1.5">
+              {availableFormats.map((fmt) => {
+                const active = selectedFormat === fmt;
+                return (
+                  <button
+                    key={fmt}
+                    onClick={() => onFormatChange(fmt)}
+                    className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full border transition-colors ${
+                      active
+                        ? "bg-indigo-600 text-white border-indigo-600"
+                        : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600"
+                    }`}
+                  >
+                    {fmt}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Bottom action bar */}
@@ -581,27 +636,16 @@ function IdeaCard({ idea, index, campaignPlatforms, isSaved, onSave, onDelete }:
             Strategy details
           </button>
           <div className="flex items-center gap-0.5">
-            <button
-              onClick={copyCaption}
-              title="Copy"
-              className="h-7 w-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
-            >
+            <button onClick={copyCaption} title="Copy" className="h-7 w-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
               {copied
                 ? <svg className="h-3.5 w-3.5 text-emerald-500" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                 : <Copy className="h-3.5 w-3.5" />
               }
             </button>
-            <button title="Schedule" className="h-7 w-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
-              <Calendar className="h-3.5 w-3.5" />
-            </button>
             <button title="Edit" className="h-7 w-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
               <Edit2 className="h-3.5 w-3.5" />
             </button>
-            <button
-              onClick={onDelete}
-              title="Delete"
-              className="h-7 w-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
-            >
+            <button onClick={onDelete} title="Delete" className="h-7 w-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors">
               <Trash2 className="h-3.5 w-3.5" />
             </button>
           </div>
