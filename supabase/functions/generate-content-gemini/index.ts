@@ -135,7 +135,7 @@ LAST SLIDE: Follow for more insights about LinkedIn growth.`,
   ];
 
   const template = TEMPLATES[seed];
-  const totalSlides = length === "Long" ? 8 : length === "Short" ? 4 : 6;
+  const totalSlides = length === "Long" ? 9 : length === "Short" ? 5 : 6;
   const ctaOptions = ["Let's explore." , "Here's what I found.", "Swipe to find out.", "Let me show you.", "Here's the breakdown.", "Let's get into it.", "Here's how.", "Let's dive in.", "This might surprise you.", "Swipe through."];
   const ctaPick = ctaOptions[Math.floor(Math.random() * ctaOptions.length)];
 
@@ -301,7 +301,7 @@ Deno.serve(async (req) => {
     const isLinkedIn = platform.toLowerCase() === "linkedin";
 
     const wordLimit = length === "Short" ? 500 : length === "Long" ? 1500 : 900;
-    const slidesCount = length === "Short" ? 4 : length === "Long" ? 9 : 6;
+    const slidesCount = length === "Short" ? 5 : length === "Long" ? 9 : 6;
 
     // ─── Build platform format instructions ───────────────────────────────────
     let formatInstructions = "";
@@ -360,22 +360,29 @@ Deno.serve(async (req) => {
     // Always return BOTH:
     //   slides[]  — short text that goes ON the visual asset (no hashtags)
     //   caption   — full platform feed text (with hashtags at end if applicable)
+    // Build example slides array to show the model exactly how many slides to produce
+    const exampleSlides = Array.from({ length: slidesCount }, (_, i) => {
+      if (i === 0) return `    { "title": "", "content": "Hook headline for slide 1.\\n\\nSupporting line or CTA." }`;
+      if (i === slidesCount - 1) return `    { "title": "", "content": "CTA slide. Follow ${brandName} for more." }`;
+      return `    { "title": "", "content": "Slide ${i + 1} headline.\\n\\nBody text for this slide." }`;
+    }).join(",\n");
+
     const outputSchema = isCarousel
-      ? `REQUIRED JSON OUTPUT FORMAT:
+      ? `REQUIRED JSON OUTPUT FORMAT — YOU MUST OUTPUT EXACTLY ${slidesCount} SLIDES:
 {
   "slides": [
-    { "title": "", "content": "Slide headline.\\n\\nBody text that expands on it." }
+${exampleSlides}
   ],
   "caption": "Full ${platform} caption for the feed post. Hook sentence. 2-3 short paragraphs. No hashtags in body.",
   "hashtags": ["hashtag1", "hashtag2", "hashtag3"],
   "platform": "${platform}",
   "contentFormat": "${contentFormat}"
 }
-Rules:
-- "slides": EXACTLY ${slidesCount} items. "title" always empty string "". ALL slide text in "content".
-- Slide content: short punchy text only (10-25 words per slide). Use \\n\\n between headline and body.
-- NO hashtags anywhere in slides.
-- "caption": ${platform}-native feed caption (${length === "Short" ? "60-120" : length === "Long" ? "200-320" : "120-200"} words). No hashtags in body.
+🚨 CRITICAL SLIDE COUNT RULE: The "slides" array MUST contain EXACTLY ${slidesCount} objects. Not 1, not 3 — EXACTLY ${slidesCount}. Count them before outputting.
+- "title": ALWAYS empty string "" for every slide.
+- "content": Use \\n\\n between headline and body on every slide.
+- NO hashtags in any slide.
+- "caption": ${platform}-native feed caption (${length === "Short" ? "60-120" : length === "Long" ? "200-320" : "120-200"} words).
 - "hashtags": 3-5 strings WITHOUT the # prefix.`
       : isBlog || isNewsletter
       ? `REQUIRED JSON OUTPUT FORMAT:

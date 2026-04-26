@@ -8,6 +8,43 @@ import type { PostIdea, GeneratedPost } from "@/server/brand.functions";
 import { loadBrandProfile, loadPostIdeationState } from "@/hooks/use-brand-store";
 import { getPlatformIcon } from "@/utils/platformIcons";
 
+// Highlight key phrases from a PEEC signal within text
+function HighlightedText({ text, peecSignal }: { text: string; peecSignal?: string }) {
+  if (!peecSignal || !text) return <span className="whitespace-pre-wrap">{text}</span>;
+
+  // Extract 2-4 word phrases from the peec signal to highlight
+  const words = peecSignal
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 4);
+
+  // Build 2-word phrases
+  const phrases: string[] = [];
+  for (let i = 0; i < words.length - 1; i++) {
+    phrases.push(words[i] + " " + words[i + 1]);
+  }
+  // Also add individual long words (>6 chars)
+  words.filter((w) => w.length > 6).forEach((w) => phrases.push(w));
+
+  if (phrases.length === 0) return <span className="whitespace-pre-wrap">{text}</span>;
+
+  // Build regex from top phrases (limit to 6)
+  const escaped = phrases.slice(0, 6).map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const regex = new RegExp(`(${escaped.join("|")})`, "gi");
+  const parts = text.split(regex);
+
+  return (
+    <span className="whitespace-pre-wrap">
+      {parts.map((part, i) =>
+        regex.test(part)
+          ? <mark key={i} className="bg-yellow-100 text-yellow-900 rounded px-0.5 not-italic font-medium">{part}</mark>
+          : <span key={i}>{part}</span>
+      )}
+    </span>
+  );
+}
+
 const CONTENT_TYPE_COLORS: Record<string, string> = {
   Educational: "bg-emerald-100 text-emerald-700",
   Promotional: "bg-purple-100 text-purple-700",
@@ -249,12 +286,12 @@ function ContentBox({
   label,
   content,
   borderColor,
-  index,
+  peecSignal,
 }: {
   label: string;
   content: string;
   borderColor: string;
-  index?: number;
+  peecSignal?: string;
 }) {
   const [copied, setCopied] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -288,8 +325,8 @@ function ContentBox({
         ) : (
           <div className="text-gray-700 leading-relaxed text-sm">
             {headline
-              ? <><p className="font-semibold text-gray-900 mb-1">{headline}</p><p className="whitespace-pre-wrap">{body}</p></>
-              : <p className="whitespace-pre-wrap">{body}</p>
+              ? <><p className="font-semibold text-gray-900 mb-1">{headline}</p><HighlightedText text={body} peecSignal={peecSignal} /></>
+              : <HighlightedText text={body} peecSignal={peecSignal} />
             }
           </div>
         )}
@@ -400,6 +437,7 @@ function PostCard({
             label={`Slide ${i + 1}`}
             content={slide.content}
             borderColor="border-l-blue-500"
+            peecSignal={post.peecSignal}
           />
         ))}
 
@@ -434,8 +472,10 @@ function PostCard({
               <textarea value={captionDraft} onChange={e => setCaptionDraft(e.target.value)} rows={5}
                 className="w-full text-sm text-gray-700 bg-white border border-indigo-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-100 resize-none leading-relaxed" />
             ) : (
-              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                {post.content || <span className="text-gray-400 italic">No caption yet.</span>}
+              <p className="text-sm text-gray-700 leading-relaxed">
+                {post.content
+                  ? <HighlightedText text={post.content} peecSignal={post.peecSignal} />
+                  : <span className="text-gray-400 italic">No caption yet.</span>}
               </p>
             )}
           </div>
