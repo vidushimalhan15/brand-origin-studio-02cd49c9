@@ -450,7 +450,7 @@ Generate the content now.`;
         contents: [{ role: "user", parts: [{ text: userPrompt }] }],
         generationConfig: {
           temperature: 0.75,
-          maxOutputTokens: isCarousel ? 4096 : isBlog ? 3000 : 1500,
+          maxOutputTokens: 8192,
           responseMimeType: "application/json",
         },
       }),
@@ -476,15 +476,28 @@ Generate the content now.`;
 
     // ─── Parse response ────────────────────────────────────────────────────────
     let parsed: any;
-    try {
-      const stripped = rawText.replace(/^```[a-zA-Z]*\s*/m, "").replace(/\s*```\s*$/m, "").trim();
-      parsed = JSON.parse(stripped);
-    } catch {
-      // Try to extract JSON from response
-      const match = rawText.match(/(\{[\s\S]*\})/);
-      if (match) {
-        try { parsed = JSON.parse(match[1]); } catch { /* fall through */ }
-      }
+    const stripped = rawText.replace(/^```[a-zA-Z]*\s*/m, "").replace(/\s*```\s*$/m, "").trim();
+
+    // Attempt 1: clean parse
+    try { parsed = JSON.parse(stripped); } catch { /* fall through */ }
+
+    // Attempt 2: extract outermost {...}
+    if (!parsed) {
+      const match = stripped.match(/(\{[\s\S]*\})/);
+      if (match) try { parsed = JSON.parse(match[1]); } catch { /* fall through */ }
+    }
+
+    // Attempt 3: truncated JSON — try to repair by closing open structures
+    if (!parsed) {
+      let txt = stripped;
+      // Count open braces/brackets and close them
+      const opens = (txt.match(/\{/g) ?? []).length - (txt.match(/\}/g) ?? []).length;
+      const openBrackets = (txt.match(/\[/g) ?? []).length - (txt.match(/\]/g) ?? []).length;
+      // Remove trailing incomplete string/comma
+      txt = txt.replace(/,\s*$/, "").replace(/"[^"]*$/, '"..."');
+      for (let i = 0; i < openBrackets; i++) txt += "]";
+      for (let i = 0; i < opens; i++) txt += "}";
+      try { parsed = JSON.parse(txt); } catch { /* fall through */ }
     }
 
     if (!parsed) {
