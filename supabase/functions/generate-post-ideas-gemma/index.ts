@@ -65,7 +65,7 @@ Vary platforms across: ${platformList}.
 
 Return ONLY the raw JSON array. No prose. No markdown. Start with [ end with ].`;
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
 
     const geminiRes = await fetch(url, {
       method: "POST",

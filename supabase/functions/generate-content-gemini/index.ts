@@ -440,18 +440,16 @@ ${outputSchema}
 Generate the content now.`;
 
     // ─── Call Gemini ──────────────────────────────────────────────────────────
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
 
     const geminiRes = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+        contents: [{ role: "user", parts: [{ text: systemPrompt + "\n\n" + userPrompt }] }],
         generationConfig: {
           temperature: 0.75,
           maxOutputTokens: 8192,
-          responseMimeType: "application/json",
         },
       }),
     });

@@ -61,7 +61,7 @@ Rules:
 - Hashtags only at the very end if platform calls for them
 - Output ONLY the final caption text, nothing else. No labels, no "Caption:", no explanation.`;
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
 
     const geminiRes = await fetch(url, {
       method: "POST",
