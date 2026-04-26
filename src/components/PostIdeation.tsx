@@ -440,7 +440,10 @@ export default function PostIdeation() {
                 index={i + 1}
                 campaignPlatforms={platforms}
                 isSaved={!!savedIdeas.find((s) => s.id === idea.id)}
-                onSave={() => toggleSaveIdea(idea)}
+                onSave={() => {
+                  const latest = ideas.find((x) => x.id === idea.id) ?? idea;
+                  toggleSaveIdea(latest);
+                }}
                 onDelete={() => setIdeas((prev) => prev.filter((x) => x.id !== idea.id))}
                 onFormatChange={(fmt) => updateIdeaFormat(idea.id, fmt)}
               />
@@ -611,7 +614,8 @@ function IdeaCard({ idea, index, campaignPlatforms, isSaved, onSave, onDelete, o
                 return (
                   <button
                     key={fmt}
-                    onClick={() => onFormatChange(fmt)}
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onFormatChange(fmt); }}
                     className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full border transition-colors ${
                       active
                         ? "bg-indigo-600 text-white border-indigo-600"
