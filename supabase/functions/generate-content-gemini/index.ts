@@ -380,14 +380,14 @@ Rules:
       : isBlog || isNewsletter
       ? `REQUIRED JSON OUTPUT FORMAT:
 {
-  "slides": [{ "title": "", "content": "Short punchy asset headline (max 12 words). This goes on the visual image." }],
+  "slides": [],
   "caption": "Full ${platform} ${contentFormat} text here. ${isBlog ? "Include markdown headers (##) for blog sections." : "Plain text, paragraphs, bullets."}",
   "hashtags": [],
   "platform": "${platform}",
   "contentFormat": "${contentFormat}"
 }
 Rules:
-- "slides": exactly 1 item with a SHORT headline for the visual asset (max 12 words, no hashtags).
+- "slides": MUST be an empty array []. No slide text for blog or newsletter.
 - "caption": the full long-form content (${length === "Short" ? "300-500" : length === "Long" ? "700-1000" : "500-700"} words).`
       : `REQUIRED JSON OUTPUT FORMAT:
 {
