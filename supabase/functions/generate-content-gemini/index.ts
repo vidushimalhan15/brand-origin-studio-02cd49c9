@@ -265,25 +265,61 @@ Deno.serve(async (req) => {
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
 
-    // ─── Determine output schema ───────────────────────────────────────────────
+    // ─── Output schema ────────────────────────────────────────────────────────
+    // Always return BOTH:
+    //   slides[]  — short text that goes ON the visual asset (no hashtags)
+    //   caption   — full platform feed text (with hashtags at end if applicable)
     const outputSchema = isCarousel
-      ? `Return a JSON object with:
-- "slides": array of {"title": "", "content": "..."} objects (EXACTLY ${slidesCount} slides, "title" always empty string)
-- "caption": string (100-150 chars, platform caption for the carousel post, no hashtags in caption body)
-- "hashtags": array of 3-5 hashtag strings (without # prefix)
-- "wordCount": number`
-      : `Return a JSON object with:
-- "content": string (the full post text)
-- "hashtags": array of hashtag strings (without # prefix) — if platform calls for hashtags, else empty array
-- "wordCount": number`;
+      ? `REQUIRED JSON OUTPUT FORMAT:
+{
+  "slides": [
+    { "title": "", "content": "Slide headline.\\n\\nBody text that expands on it." }
+  ],
+  "caption": "Full ${platform} caption for the feed post. Hook sentence. 2-3 short paragraphs. No hashtags in body.",
+  "hashtags": ["hashtag1", "hashtag2", "hashtag3"],
+  "platform": "${platform}",
+  "contentFormat": "${contentFormat}"
+}
+Rules:
+- "slides": EXACTLY ${slidesCount} items. "title" always empty string "". ALL slide text in "content".
+- Slide content: short punchy text only (10-25 words per slide). Use \\n\\n between headline and body.
+- NO hashtags anywhere in slides.
+- "caption": ${platform}-native feed caption (${length === "Short" ? "60-120" : length === "Long" ? "200-320" : "120-200"} words). No hashtags in body.
+- "hashtags": 3-5 strings WITHOUT the # prefix.`
+      : isBlog || isNewsletter
+      ? `REQUIRED JSON OUTPUT FORMAT:
+{
+  "slides": [{ "title": "", "content": "Short punchy asset headline (max 12 words). This goes on the visual image." }],
+  "caption": "Full ${platform} ${contentFormat} text here. ${isBlog ? "Include markdown headers (##) for blog sections." : "Plain text, paragraphs, bullets."}",
+  "hashtags": [],
+  "platform": "${platform}",
+  "contentFormat": "${contentFormat}"
+}
+Rules:
+- "slides": exactly 1 item with a SHORT headline for the visual asset (max 12 words, no hashtags).
+- "caption": the full long-form content (${length === "Short" ? "300-500" : length === "Long" ? "700-1000" : "500-700"} words).`
+      : `REQUIRED JSON OUTPUT FORMAT:
+{
+  "slides": [{ "title": "", "content": "Short punchy asset text.\\n\\nOne supporting line." }],
+  "caption": "Full ${platform} feed caption here. Hook. Body. CTA.${isInstagram ? " Hashtags go at very end separated by blank line." : ""}",
+  "hashtags": ${isInstagram ? '["hashtag1", "hashtag2", "hashtag3", "hashtag4", "hashtag5"]' : isLinkedIn ? '["hashtag1", "hashtag2", "hashtag3"]' : '[]'},
+  "platform": "${platform}",
+  "contentFormat": "${contentFormat}"
+}
+Rules:
+- "slides": exactly 1 item. "title" always empty string "". "content" = short text for the visual asset (max 30 words). Use \\n\\n to separate headline from subtext. NO hashtags.
+- "caption": the full platform-native post text (${length === "Short" ? "60-120" : length === "Long" ? "200-320" : "120-200"} words). Write a proper hook, body, and CTA.${isInstagram ? " Add hashtags at the very end after a blank line." : " NO hashtags in body."}
+- "hashtags": strings WITHOUT the # prefix.`;
 
     // ─── Full prompt ──────────────────────────────────────────────────────────
-    const systemPrompt = `You are an expert social media content creator. You create original, platform-native content that sounds human and drives engagement. Always respond with valid JSON only — no prose, no markdown wrapper.`;
+    const systemPrompt = `You are an expert social media content creator for ${brandName}. You generate TWO things simultaneously:
+1. SHORT visual asset text (goes ON the image/slide — punchy, scannable, no hashtags)
+2. FULL platform caption (goes in the feed post — complete copy with hook, body, CTA)
+Always respond with valid JSON only — no prose, no markdown wrapper around the JSON.`;
 
     const userPrompt = `BRAND CONTEXT:
 - Brand: ${brandName}
 - About: ${introduction || "N/A"}
-- Industry/Context: derived from brand about section
 - Current year: ${currentYear}
 ${audienceSection}${productSection}
 
@@ -298,13 +334,13 @@ POST CONCEPT:
 - Length: ${length}
 ${peecSection}${writingStyleSection}
 
-GLOBAL RULES (apply to ALL content):
-- NO markdown bold/italic (**text** or *text*) in social media content
+GLOBAL RULES:
+- NO markdown bold/italic (**text** or *text*) in social media content (exception: blog ##headers)
 - NO em dashes (—) — use hyphen (-) instead
-- NO hashtags in slide content or post body — hashtags go in the "hashtags" array only
-- Do NOT repeat the post title verbatim as the opening line — write an ORIGINAL hook
-- Plain text only for social platforms (exception: blog posts may use markdown headers)
-- Content must sound human and authentic — not corporate or AI-generated
+- Slide/asset text: NO hashtags, plain text only, short and punchy
+- Caption: full platform-native copy, hashtags at end only (in the "hashtags" array, not in caption text)
+- Do NOT repeat the post title verbatim as the hook — write an ORIGINAL opening line
+- Sound human, not corporate or AI-generated
 
 ${formatInstructions}
 
@@ -313,7 +349,7 @@ ${outputSchema}
 Generate the content now.`;
 
     // ─── Call Gemini ──────────────────────────────────────────────────────────
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${geminiApiKey}`;
 
     const geminiRes = await fetch(url, {
       method: "POST",

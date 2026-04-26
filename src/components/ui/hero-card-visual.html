@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    .hero-card-container {
+      position: relative;
+      width: 460px;
+      height: 520px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Soft glowing gradient background */
+    .gradient-glow {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(
+        circle at 30% 50%,
+        rgba(173, 216, 230, 0.6) 0%,
+        rgba(221, 160, 221, 0.5) 40%,
+        rgba(255, 182, 193, 0.6) 70%,
+        rgba(255, 192, 203, 0.4) 100%
+      );
+      filter: blur(180px);
+      border-radius: 50%;
+      z-index: 1;
+    }
+
+    /* Frosted glass cards - back left */
+    .glass-card-1 {
+      position: absolute;
+      width: 340px;
+      height: 420px;
+      background: rgba(255, 255, 255, 0.25);
+      backdrop-filter: blur(35px);
+      -webkit-backdrop-filter: blur(35px);
+      border-radius: 28px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      top: 50%;
+      left: 15%;
+      transform: translate(-50%, -50%) rotate(-3deg);
+      z-index: 2;
+    }
+
+    /* Frosted glass cards - back right */
+    .glass-card-2 {
+      position: absolute;
+      width: 340px;
+      height: 420px;
+      background: rgba(255, 255, 255, 0.22);
+      backdrop-filter: blur(35px);
+      -webkit-backdrop-filter: blur(35px);
+      border-radius: 28px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      top: 48%;
+      right: 12%;
+      transform: translate(50%, -50%) rotate(4deg);
+      z-index: 2;
+    }
+
+    /* Frosted glass cards - bottom center */
+    .glass-card-3 {
+      position: absolute;
+      width: 340px;
+      height: 420px;
+      background: rgba(255, 255, 255, 0.28);
+      backdrop-filter: blur(40px);
+      -webkit-backdrop-filter: blur(40px);
+      border-radius: 28px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      bottom: 8%;
+      left: 50%;
+      transform: translateX(-50%) rotate(-1deg);
+      z-index: 3;
+    }
+
+    /* Main card image container */
+    .main-card {
+      position: relative;
+      width: 280px;
+      height: 360px;
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+      z-index: 4;
+    }
+
+    .main-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="hero-card-container">
+    <!-- Gradient glow background -->
+    <div class="gradient-glow"></div>
+
+    <!-- Frosted glass cards -->
+    <div class="glass-card-1"></div>
+    <div class="glass-card-2"></div>
+    <div class="glass-card-3"></div>
+
+    <!-- Main card image - replace src with your actual image -->
+    <div class="main-card">
+      <img src="your-card-image.png" alt="SocialFlow Card">
+    </div>
+  </div>
+</body>
+</html>

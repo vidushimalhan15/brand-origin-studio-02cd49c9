@@ -74,33 +74,35 @@ export default function PostGeneration() {
         },
       });
       if (res.error) {
+        console.error("[PostGeneration] generateOne error:", res.error);
         setGenError(res.error);
         return;
       }
-      if (res.content) {
+      if (res.content || (res.slides && res.slides.length > 0)) {
         setPosts((prev) => {
+          const newPost: GeneratedPost = {
+            id: `post-${idea.id}`,
+            ideaId: idea.id,
+            title: idea.title,
+            platform: idea.platform,
+            contentType: idea.contentType,
+            pillar: idea.pillar,
+            peecSource: idea.peecSource ?? null,
+            peecSignal: idea.peecSignal,
+            content: res.content,
+            slides: res.slides ?? [],
+            hashtags: res.hashtags ?? [],
+            approved: false,
+          };
           const existing = prev.find((p) => p.ideaId === idea.id);
           if (existing) {
-            return prev.map((p) => p.ideaId === idea.id ? { ...p, content: res.content } : p);
+            return prev.map((p) => p.ideaId === idea.id ? { ...p, ...newPost } : p);
           }
-          return [
-            ...prev,
-            {
-              id: `post-${idea.id}`,
-              ideaId: idea.id,
-              title: idea.title,
-              platform: idea.platform,
-              contentType: idea.contentType,
-              pillar: idea.pillar,
-              peecSource: idea.peecSource ?? null,
-              peecSignal: idea.peecSignal,
-              content: res.content,
-              approved: false,
-            },
-          ];
+          return [...prev, newPost];
         });
       }
     } catch (err) {
+      console.error("[PostGeneration] generateOne exception:", err);
       setGenError(err instanceof Error ? err.message : "Generation failed.");
     } finally {
       setGenerating((prev) => { const s = new Set(prev); s.delete(idea.id); return s; });
@@ -345,18 +347,49 @@ function PostCard({
         </div>
 
         {/* Title */}
-        <p className="text-sm font-semibold text-gray-900 mb-2">{post.title}</p>
+        <p className="text-sm font-semibold text-gray-900 mb-3">{post.title}</p>
 
-        {/* Content */}
-        {editing ? (
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            rows={6}
-            className="w-full text-sm text-gray-700 bg-white border border-indigo-300 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-indigo-100 resize-none leading-relaxed"
-          />
-        ) : (
-          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{post.content}</p>
+        {/* Asset text (slides) — text that goes ON the visual */}
+        {post.slides && post.slides.length > 0 && (
+          <div className="mb-3">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Asset text</p>
+            <div className="space-y-1.5">
+              {post.slides.map((slide, i) => (
+                <div key={i} className="bg-slate-50 border border-slate-100 rounded-xl px-3 py-2">
+                  {post.slides!.length > 1 && (
+                    <p className="text-xs text-slate-400 font-medium mb-0.5">Slide {i + 1}</p>
+                  )}
+                  <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{slide.content}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Feed caption */}
+        <div>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Caption</p>
+          {editing ? (
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              rows={6}
+              className="w-full text-sm text-gray-700 bg-white border border-indigo-300 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-indigo-100 resize-none leading-relaxed"
+            />
+          ) : (
+            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{post.content}</p>
+          )}
+        </div>
+
+        {/* Hashtags */}
+        {post.hashtags && post.hashtags.length > 0 && !editing && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {post.hashtags.map((tag) => (
+              <span key={tag} className="text-xs text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                #{tag}
+              </span>
+            ))}
+          </div>
         )}
       </div>
     </div>

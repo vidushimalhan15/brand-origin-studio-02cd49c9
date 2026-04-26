@@ -593,7 +593,9 @@ export type GeneratedPost = {
   pillar: string;
   peecSource?: "ai_visibility" | "reputation_fix" | null;
   peecSignal?: string;
-  content: string;
+  content: string;       // full feed caption
+  slides?: { title: string; content: string }[]; // asset/visual text
+  hashtags?: string[];
   approved: boolean;
 };
 
@@ -615,7 +617,13 @@ export const generatePostContent = createServerFn({ method: "POST" })
       }),
     }),
   )
-  .handler(async ({ data }): Promise<{ content: string; error?: string; success?: boolean }> => {
+  .handler(async ({ data }): Promise<{
+    content: string;
+    slides?: { title: string; content: string }[];
+    caption?: string;
+    hashtags?: string[];
+    error?: string;
+  }> => {
     const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
@@ -641,12 +649,19 @@ export const generatePostContent = createServerFn({ method: "POST" })
 
       if (!res.ok) {
         const text = await res.text().catch(() => "");
-        return { content: "", error: `Generation failed (${res.status}): ${text.slice(0, 200)}` };
+        return { content: "", error: `Generation failed (${res.status}): ${text.slice(0, 1000)}` };
       }
 
       const json = await res.json();
       if (json.error) return { content: "", error: json.error };
-      return { content: String(json.content ?? "") };
+      // caption is the feed text; slides is the asset text; content is fallback
+      const feedText = json.caption || json.content || "";
+      return {
+        content: feedText,
+        slides: json.slides ?? [],
+        caption: json.caption ?? "",
+        hashtags: json.hashtags ?? [],
+      };
     } catch (err) {
       return { content: "", error: err instanceof Error ? err.message : "Failed to generate content." };
     }
