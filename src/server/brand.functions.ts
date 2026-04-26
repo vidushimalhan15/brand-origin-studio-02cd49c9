@@ -655,7 +655,7 @@ export const generatePostIdeas = createServerFn({ method: "POST" })
           platform: String(idea.platform ?? "LinkedIn"),
           contentType: String(idea.contentType ?? "Educational"),
           pillar: String(idea.pillar ?? ""),
-          hook: String(idea.hook ?? "").slice(0, 150),
+          hook: String(idea.hook ?? "").replace(/#\w+/g, "").replace(/\s{2,}/g, " ").trim().slice(0, 150),
           peecSource: idea.peecSource ?? null,
           peecSignal: idea.peecSignal ? String(idea.peecSignal).slice(0, 200) : undefined,
         })),
