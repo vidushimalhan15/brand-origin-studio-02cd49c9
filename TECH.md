@@ -4,6 +4,12 @@
 
 ---
 
+## Origin
+
+The initial UI was built using **[Lovable](https://lovable.dev)** — an AI-powered app builder that scaffolded the component structure, Tailwind styling, and Radix UI primitives. The project was then extended with custom server functions, Supabase persistence, AI integrations (OpenAI, Gemini, Peec, Tavily), and additional routes built directly in the codebase using Claude Code.
+
+---
+
 ## Stack Overview
 
 | Layer | Technology |
