@@ -394,9 +394,9 @@ function CampaignsPage() {
 
   return (
     <AppLayout>
-      <div className="space-y-4 pb-16">
+      <div className="space-y-4 pb-16 pt-2">
         {/* Header */}
-        <div>
+        <div className="mb-16">
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Campaign Setup</h1>
           <p className="text-slate-500 text-sm mt-1">Define the boundaries and goals of your next push.</p>
         </div>

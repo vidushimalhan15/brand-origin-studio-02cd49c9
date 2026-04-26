@@ -221,7 +221,7 @@ function StrategyPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <header>
+        <header className="mb-16">
           <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Content Strategy</h2>
           <p className="text-slate-500 text-sm mt-1">Choose how you want to distribute your content.</p>
         </header>

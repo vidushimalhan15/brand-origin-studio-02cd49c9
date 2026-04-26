@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Sparkles, Lightbulb, TrendingUp } from "lucide-react";
-import { generatePostIdeas } from "@/server/brand.functions";
+import { Sparkles, Lightbulb, TrendingUp, RefreshCw } from "lucide-react";
+import { generatePostIdeas, fetchPeecInsights } from "@/server/brand.functions";
 import type { PostIdea } from "@/server/brand.functions";
 import { loadBrandProfile, loadLatestCampaignFromDB } from "@/hooks/use-brand-store";
 
@@ -26,6 +26,12 @@ function readLocal<T>(key: string, fallback: T): T {
   try { return JSON.parse(localStorage.getItem(key) ?? "null") ?? fallback; } catch { return fallback; }
 }
 
+type PeecData = {
+  volumeRankedPrompts: { prompt: string; rank: number; volume: string }[];
+  chatGaps: string[];
+  ugcBrief: string;
+};
+
 export default function PostIdeation() {
   const [brandName, setBrandName] = useState("");
   const [introduction, setIntroduction] = useState("");
@@ -38,6 +44,14 @@ export default function PostIdeation() {
     () => readLocal("camp_tavily_by_pillar", {}),
   );
 
+  // Peec AI signals
+  const [peecData, setPeecData] = useState<PeecData | null>(null);
+  const [isFetchingPeec, setIsFetchingPeec] = useState(false);
+  const [selectedPeecSignals, setSelectedPeecSignals] = useState<{
+    prompts: Set<number>; chatGaps: Set<number>; ugcBrief: Set<number>;
+  }>({ prompts: new Set(), chatGaps: new Set(), ugcBrief: new Set() });
+
+  // Post ideas
   const [numberOfPosts, setNumberOfPosts] = useState(6);
   const [ideas, setIdeas] = useState<PostIdea[]>([]);
   const [savedIdeas, setSavedIdeas] = useState<PostIdea[]>([]);
@@ -47,13 +61,44 @@ export default function PostIdeation() {
   useEffect(() => {
     (async () => {
       const [profile, campaign] = await Promise.all([loadBrandProfile(), loadLatestCampaignFromDB()]);
-      if (profile) { setBrandName(profile.brandName); setIntroduction(profile.introduction); }
+      if (profile) {
+        setBrandName(profile.brandName);
+        setIntroduction(profile.introduction);
+        if (profile.brandName) fetchPeec(profile.brandName, profile.introduction);
+      }
       if (campaign) {
         setPlatforms(campaign.selectedPlatforms ?? []);
         setContentPillars((campaign.contentPillars ?? []).filter(Boolean));
       }
     })();
   }, []);
+
+  async function fetchPeec(name: string, intro: string) {
+    if (!name) return;
+    setIsFetchingPeec(true);
+    try {
+      const res = await fetchPeecInsights({ data: { brandName: name, introduction: intro } });
+      if (!res.error) {
+        setPeecData({
+          volumeRankedPrompts: res.postIdeation.volumeRankedPrompts,
+          chatGaps: res.postIdeation.chatGaps,
+          ugcBrief: res.postIdeation.ugcBrief,
+        });
+      }
+    } catch { /* silent */ } finally {
+      setIsFetchingPeec(false);
+    }
+  }
+
+  function togglePeec(section: "prompts" | "chatGaps" | "ugcBrief", i: number) {
+    setSelectedPeecSignals((prev) => {
+      const next = new Set(prev[section]);
+      next.has(i) ? next.delete(i) : next.add(i);
+      return { ...prev, [section]: next };
+    });
+  }
+
+  const totalSelected = selectedPeecSignals.prompts.size + selectedPeecSignals.chatGaps.size + selectedPeecSignals.ugcBrief.size;
 
   async function handleGenerate() {
     if (!brandName) { setGenError("Complete Brand Setup first."); return; }
@@ -64,12 +109,28 @@ export default function PostIdeation() {
     const allArticles = Object.values(trendsByPillar).flat();
     const trendingContext = selectedTrendIds
       .map((id) => { const a = allArticles.find((x) => x.id === id); return a ? `${a.title}: ${a.content}` : null; })
-      .filter(Boolean)
-      .join("\n\n");
+      .filter(Boolean).join("\n\n");
+
+    // Build peec context from selected signals
+    const peecContext: string[] = [];
+    if (peecData) {
+      Array.from(selectedPeecSignals.prompts).forEach((i) => {
+        const p = peecData.volumeRankedPrompts[i];
+        if (p) peecContext.push(`AI question: ${p.prompt}`);
+      });
+      Array.from(selectedPeecSignals.chatGaps).forEach((i) => {
+        if (peecData.chatGaps[i]) peecContext.push(`Content gap: ${peecData.chatGaps[i]}`);
+      });
+      if (selectedPeecSignals.ugcBrief.size > 0 && peecData.ugcBrief) {
+        peecContext.push(`UGC brief: ${peecData.ugcBrief}`);
+      }
+    }
+
+    const combinedContext = [...(trendingContext ? [trendingContext] : []), ...peecContext].join("\n\n");
 
     try {
       const res = await generatePostIdeas({
-        data: { brandName, introduction, platforms, contentPillars, trendingContext, count: numberOfPosts || 6 },
+        data: { brandName, introduction, platforms, contentPillars, trendingContext: combinedContext, count: numberOfPosts || 6 },
       });
       if (res.error) setGenError(res.error);
       else setIdeas(res.ideas);
@@ -90,12 +151,12 @@ export default function PostIdeation() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 pb-16">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Post Ideation</h1>
+      <div className="mb-16">
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Post Ideation</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Generate AI-powered post ideas using your brand, campaign, and trending news selected in Campaigns.
+          Generate AI-powered post ideas using your brand, campaign, and live AI signals.
         </p>
       </div>
 
@@ -121,6 +182,115 @@ export default function PostIdeation() {
         />
       </div>
 
+      {/* Peec AI Signals Panel */}
+      {(isFetchingPeec || peecData) && (
+        <div className="rounded-2xl border border-purple-100 overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-purple-50 to-fuchsia-50 border-b border-purple-100">
+            <div className="flex items-center gap-2">
+              <span className="text-base">⚡</span>
+              <div>
+                <p className="text-sm font-semibold text-purple-800">Peec AI — Post Ideation Signals</p>
+                <p className="text-xs text-purple-500">Live data from ChatGPT, Perplexity & other AI tools — used to shape your post ideas</p>
+              </div>
+            </div>
+            <button
+              onClick={() => fetchPeec(brandName, introduction)}
+              disabled={isFetchingPeec}
+              className="text-purple-400 hover:text-purple-600 transition-colors disabled:opacity-40"
+              title="Refresh Peec data"
+            >
+              <RefreshCw className={`h-4 w-4 ${isFetchingPeec ? "animate-spin" : ""}`} />
+            </button>
+          </div>
+
+          <div className="p-4 space-y-4 bg-white">
+            {isFetchingPeec && (
+              <p className="text-xs text-purple-500 animate-pulse">Fetching live AI signals for {brandName}…</p>
+            )}
+
+            {/* Volume-ranked prompts */}
+            {peecData && peecData.volumeRankedPrompts.length > 0 && (
+              <div className="space-y-2">
+                <div>
+                  <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">What people are asking AI about {brandName}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">These are real questions people typed into ChatGPT, Perplexity, etc.</p>
+                </div>
+                <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                  {peecData.volumeRankedPrompts.slice(0, 10).map((p, i) => {
+                    const selected = selectedPeecSignals.prompts.has(i);
+                    return (
+                      <div
+                        key={i}
+                        onClick={() => togglePeec("prompts", i)}
+                        className={`flex items-center gap-3 rounded-lg px-3 py-2 cursor-pointer transition-colors ${selected ? "bg-purple-100 border border-purple-300" : "bg-purple-50 border border-transparent hover:border-purple-200"}`}
+                      >
+                        <div className={`h-4 w-4 shrink-0 rounded border-2 flex items-center justify-center transition-colors ${selected ? "border-purple-500 bg-purple-500" : "border-purple-300 bg-white"}`}>
+                          {selected && <svg className="h-2.5 w-2.5 text-white" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                        </div>
+                        <span className="text-xs text-gray-700 flex-1 leading-snug">{p.prompt}</span>
+                        <span className="shrink-0 text-xs font-semibold text-purple-700 bg-white border border-purple-200 px-2 py-0.5 rounded-full whitespace-nowrap">rank #{i + 1}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Chat gaps */}
+            {peecData && peecData.chatGaps.length > 0 && (
+              <div className="space-y-2">
+                <div>
+                  <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Where competitors are winning</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Questions where AI recommends a competitor over {brandName}. Make content here to take that spot.</p>
+                </div>
+                <div className="space-y-1.5">
+                  {peecData.chatGaps.map((gap, i) => {
+                    const selected = selectedPeecSignals.chatGaps.has(i);
+                    return (
+                      <div
+                        key={i}
+                        onClick={() => togglePeec("chatGaps", i)}
+                        className={`rounded-lg px-3 py-2 cursor-pointer transition-colors flex items-start gap-2 ${selected ? "bg-orange-100 border border-orange-300" : "bg-orange-50 border border-orange-100 hover:border-orange-200"}`}
+                      >
+                        <div className={`mt-0.5 h-4 w-4 shrink-0 rounded border-2 flex items-center justify-center transition-colors ${selected ? "border-orange-500 bg-orange-500" : "border-orange-300 bg-white"}`}>
+                          {selected && <svg className="h-2.5 w-2.5 text-white" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                        </div>
+                        <p className="text-xs text-gray-700 leading-snug">{gap}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* UGC brief */}
+            {peecData && peecData.ugcBrief && (
+              <div className="space-y-2">
+                <div>
+                  <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">What AI says negatively about {brandName}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">AI is telling people this about your brand. Create real customer stories to change this narrative.</p>
+                </div>
+                <div
+                  onClick={() => togglePeec("ugcBrief", 0)}
+                  className={`flex items-start gap-2 rounded-lg px-3 py-2 cursor-pointer transition-colors ${selectedPeecSignals.ugcBrief.has(0) ? "bg-red-100 border border-red-300" : "bg-red-50 border border-red-100 hover:border-red-200"}`}
+                >
+                  <div className={`mt-0.5 h-4 w-4 shrink-0 rounded border-2 flex items-center justify-center transition-colors ${selectedPeecSignals.ugcBrief.has(0) ? "border-red-500 bg-red-500" : "border-red-300 bg-white"}`}>
+                    {selectedPeecSignals.ugcBrief.has(0) && <svg className="h-2.5 w-2.5 text-white" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                  </div>
+                  <p className="text-xs text-gray-700 leading-snug">{peecData.ugcBrief}</p>
+                </div>
+              </div>
+            )}
+
+            {totalSelected > 0
+              ? <p className="text-xs text-purple-600 font-medium pt-1">{totalSelected} signal{totalSelected !== 1 ? "s" : ""} selected — will be used in idea generation</p>
+              : <p className="text-xs text-gray-400 pt-1">Click any item above to include it in your idea generation.</p>
+            }
+          </div>
+        </div>
+      )}
+
       {/* Generate card */}
       <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-indigo-50 to-purple-50 p-5">
         <div className="flex flex-col items-center gap-3 text-center">
@@ -128,7 +298,6 @@ export default function PostIdeation() {
             <Sparkles className="h-5 w-5 text-purple-600" />
           </div>
 
-          {/* Context pills */}
           <div className="flex flex-wrap justify-center gap-1.5">
             {platforms.map((p) => (
               <span key={p} className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${PLATFORM_COLORS[p] ?? "bg-slate-100 text-slate-700"}`}>{p}</span>
@@ -142,6 +311,11 @@ export default function PostIdeation() {
                 {selectedTrendIds.length} trend{selectedTrendIds.length !== 1 ? "s" : ""} from Campaigns
               </span>
             )}
+            {totalSelected > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-[11px] bg-purple-100 text-purple-700">
+                ⚡ {totalSelected} Peec signal{totalSelected !== 1 ? "s" : ""}
+              </span>
+            )}
           </div>
 
           <button
@@ -149,11 +323,10 @@ export default function PostIdeation() {
             disabled={generating || !brandName}
             className="flex items-center gap-1.5 rounded-full bg-purple-600 px-5 py-1.5 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50 transition-colors"
           >
-            {generating ? (
-              <><div className="h-3.5 w-3.5 animate-spin rounded-full border-b-2 border-white" />Generating...</>
-            ) : (
-              <><Sparkles className="h-3.5 w-3.5" />Generate Ideas</>
-            )}
+            {generating
+              ? <><div className="h-3.5 w-3.5 animate-spin rounded-full border-b-2 border-white" />Generating...</>
+              : <><Sparkles className="h-3.5 w-3.5" />Generate Ideas</>
+            }
           </button>
 
           {!brandName && <p className="text-xs text-amber-600">Complete Brand Setup first to generate ideas.</p>}

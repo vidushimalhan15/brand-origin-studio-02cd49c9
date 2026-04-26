@@ -260,6 +260,7 @@ export default function BrandIdentityStep() {
             Set up your brand identity, audience, and products to power AI-driven content.
           </p>
         </div>
+        <div className="mb-16" />
 
         <div className="space-y-4">
 
