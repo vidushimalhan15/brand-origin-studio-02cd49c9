@@ -1,12 +1,13 @@
-import { LayoutDashboard, Target, PenTool, Rocket, Settings } from "lucide-react";
+import { LayoutDashboard, Target, PenTool, Rocket, Settings, Lightbulb } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
 const navigation = [
-  { name: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
+  { name: "Dashboard", icon: LayoutDashboard, path: "/" },
   { name: "Brand Setup", icon: Target, path: "/" },
   { name: "Content Strategy", icon: PenTool, path: "/strategy" },
   { name: "Campaigns", icon: Rocket, path: "/campaigns" },
+  { name: "Post Ideation", icon: Lightbulb, path: "/post-ideation" },
 ] as const;
 
 export default function AppLayout({ children }: { children: ReactNode }) {
