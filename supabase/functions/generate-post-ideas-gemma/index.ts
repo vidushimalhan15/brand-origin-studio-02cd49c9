@@ -50,20 +50,18 @@ Rules:
 
 Respond with ONLY the JSON array, starting with [ and ending with ]. No other text.`;
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:generateContent?key=${geminiApiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${geminiApiKey}`;
 
     const geminiRes = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         system_instruction: { parts: [{ text: systemPrompt }] },
-        contents: [
-          { role: "user", parts: [{ text: userPrompt }] },
-          { role: "model", parts: [{ text: "[" }] },
-        ],
+        contents: [{ role: "user", parts: [{ text: userPrompt }] }],
         generationConfig: {
           temperature: 0.85,
           maxOutputTokens: 8192,
+          responseMimeType: "application/json",
         },
       }),
     });
@@ -89,9 +87,8 @@ Respond with ONLY the JSON array, starting with [ and ending with ]. No other te
       );
     }
 
-    // We pre-filled "[" as the model turn, so prepend it back
-    const fullText = "[" + rawText;
-    console.log("[gemma] fullText (first 1000):", fullText.slice(0, 1000));
+    const fullText = rawText;
+    console.log("[gemini3] rawText (first 1000):", fullText.slice(0, 1000));
 
     // Parse Gemma's response — try several strategies
     let ideas: unknown[] = [];
