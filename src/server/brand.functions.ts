@@ -615,7 +615,7 @@ export const generatePostContent = createServerFn({ method: "POST" })
       }),
     }),
   )
-  .handler(async ({ data }): Promise<{ content: string; error?: string }> => {
+  .handler(async ({ data }): Promise<{ content: string; error?: string; success?: boolean }> => {
     const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
@@ -624,7 +624,7 @@ export const generatePostContent = createServerFn({ method: "POST" })
     }
 
     try {
-      const res = await fetch(`${supabaseUrl}/functions/v1/generate-post-content`, {
+      const res = await fetch(`${supabaseUrl}/functions/v1/generate-content-gemini`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${supabaseKey}`,
@@ -634,6 +634,8 @@ export const generatePostContent = createServerFn({ method: "POST" })
           brandName: data.brandName,
           introduction: data.introduction,
           idea: data.idea,
+          contentFormat: "Text Post",
+          length: "Medium",
         }),
       });
 
