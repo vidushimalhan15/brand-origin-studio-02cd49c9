@@ -584,6 +584,72 @@ export const searchTavilyByPillar = createServerFn({ method: "POST" })
 
 // ── Generate Post Ideas ──────────────────────────────────────────────────────
 
+export type GeneratedPost = {
+  id: string;
+  ideaId: string;
+  title: string;
+  platform: string;
+  contentType: string;
+  pillar: string;
+  peecSource?: "ai_visibility" | "reputation_fix" | null;
+  peecSignal?: string;
+  content: string;
+  approved: boolean;
+};
+
+export const generatePostContent = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      brandName: z.string().min(1).max(120),
+      introduction: z.string().max(600).optional().default(""),
+      idea: z.object({
+        id: z.string(),
+        title: z.string(),
+        caption: z.string(),
+        platform: z.string(),
+        contentType: z.string(),
+        pillar: z.string(),
+        hook: z.string(),
+        peecSource: z.enum(["ai_visibility", "reputation_fix"]).nullable().optional(),
+        peecSignal: z.string().optional(),
+      }),
+    }),
+  )
+  .handler(async ({ data }): Promise<{ content: string; error?: string }> => {
+    const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      return { content: "", error: "Supabase environment variables are not configured." };
+    }
+
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/generate-post-content`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${supabaseKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          brandName: data.brandName,
+          introduction: data.introduction,
+          idea: data.idea,
+        }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        return { content: "", error: `Generation failed (${res.status}): ${text.slice(0, 200)}` };
+      }
+
+      const json = await res.json();
+      if (json.error) return { content: "", error: json.error };
+      return { content: String(json.content ?? "") };
+    } catch (err) {
+      return { content: "", error: err instanceof Error ? err.message : "Failed to generate content." };
+    }
+  });
+
 export type PostIdea = {
   id: string;
   title: string;

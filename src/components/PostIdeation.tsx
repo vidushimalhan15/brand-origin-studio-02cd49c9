@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Sparkles, Lightbulb, RefreshCw, ChevronUp, ChevronDown, Target, Copy, Trash2, Edit2, Calendar } from "lucide-react";
+import { Sparkles, Lightbulb, RefreshCw, ChevronUp, ChevronDown, Target, Copy, Trash2, Edit2, Calendar, Check, ChevronRight, Loader2 } from "lucide-react";
 import { generatePostIdeas, fetchPeecInsights } from "@/server/brand.functions";
 import type { PostIdea } from "@/server/brand.functions";
 import { loadBrandProfile, loadLatestCampaignFromDB, loadPostIdeationState, savePostIdeationState } from "@/hooks/use-brand-store";
@@ -60,6 +60,8 @@ export default function PostIdeation() {
   const [savedIdeas, setSavedIdeas] = useState<PostIdea[]>([]);
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedToast, setSavedToast] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -198,13 +200,30 @@ export default function PostIdeation() {
     }
   }
 
-  function saveIdea(idea: PostIdea) {
-    setIdeas((prev) => prev.filter((i) => i.id !== idea.id));
-    setSavedIdeas((prev) => [...prev, idea]);
+  async function handleSave() {
+    setIsSaving(true);
+    await savePostIdeationState({
+      peecData,
+      selectedPeecSignals: {
+        prompts: Array.from(selectedPeecSignals.prompts),
+        chatGaps: Array.from(selectedPeecSignals.chatGaps),
+        ugcBrief: Array.from(selectedPeecSignals.ugcBrief),
+      },
+      ideas,
+      savedIdeas,
+      numberOfPosts,
+    });
+    setIsSaving(false);
+    setSavedToast(true);
+    setTimeout(() => setSavedToast(false), 3500);
   }
 
-  function unsaveIdea(id: string) {
-    setSavedIdeas((prev) => prev.filter((i) => i.id !== id));
+  function toggleSaveIdea(idea: PostIdea) {
+    setSavedIdeas((prev) =>
+      prev.find((i) => i.id === idea.id)
+        ? prev.filter((i) => i.id !== idea.id)
+        : [...prev, idea]
+    );
   }
 
   return (
@@ -394,62 +413,68 @@ export default function PostIdeation() {
         </div>
       </div>
 
-      {/* Generated ideas */}
+      {/* Generated ideas — stay in place, checkbox turns green when selected */}
       {ideas.length > 0 && (
         <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
               <Lightbulb className="h-4 w-4 text-yellow-500" />
-              {ideas.length} Post Ideas Generated
+              {ideas.length} Post Ideas
+              {savedIdeas.length > 0 && (
+                <span className="text-xs font-normal text-green-600 ml-1">— {savedIdeas.length} selected</span>
+              )}
             </p>
-            <span className="text-xs text-gray-400">Click bookmark to save</span>
+            <span className="text-xs text-gray-400">Click checkbox to select</span>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             {ideas.map((idea, i) => (
-              <IdeaCard key={idea.id} idea={idea} index={i + 1} campaignPlatforms={platforms} onSave={() => saveIdea(idea)} onDelete={() => setIdeas(prev => prev.filter(x => x.id !== idea.id))} variant="suggestion" />
+              <IdeaCard
+                key={idea.id}
+                idea={idea}
+                index={i + 1}
+                campaignPlatforms={platforms}
+                isSaved={!!savedIdeas.find((s) => s.id === idea.id)}
+                onSave={() => toggleSaveIdea(idea)}
+                onDelete={() => setIdeas((prev) => prev.filter((x) => x.id !== idea.id))}
+              />
             ))}
           </div>
         </div>
       )}
 
-      {/* Saved ideas */}
-      {savedIdeas.length > 0 && (
-        <div className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
-              <span className="text-base">🔖</span>
-              Saved Ideas ({savedIdeas.length})
-            </p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {savedIdeas.map((idea, i) => (
-              <IdeaCard key={idea.id} idea={idea} index={i + 1} campaignPlatforms={platforms} onSave={() => unsaveIdea(idea.id)} onDelete={() => unsaveIdea(idea.id)} variant="saved" />
-            ))}
-          </div>
+      {savedToast && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 flex items-center gap-2 text-sm text-emerald-800">
+          <Check className="w-4 h-4" />
+          Post ideation saved successfully.
         </div>
       )}
+
+      {/* Save CTA */}
+      <div className="flex justify-end">
+        <button
+          onClick={handleSave}
+          disabled={isSaving}
+          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-5 py-2.5 rounded-full shadow-sm transition-all disabled:opacity-70"
+        >
+          {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+          {isSaving ? "Saving…" : "Save"}
+          {!isSaving && <ChevronRight className="w-4 h-4" />}
+        </button>
+      </div>
     </div>
   );
 }
 
-function IdeaCard({ idea, index, campaignPlatforms, onSave, onDelete, variant }: {
+function IdeaCard({ idea, index, campaignPlatforms, isSaved, onSave, onDelete }: {
   idea: PostIdea & { peecSource?: string | null; peecSignal?: string };
   index: number;
   campaignPlatforms: string[];
+  isSaved: boolean;
   onSave: () => void;
   onDelete: () => void;
-  variant: "suggestion" | "saved";
 }) {
   const [showStrategy, setShowStrategy] = useState(false);
   const [copied, setCopied] = useState(false);
-  // Selected platforms per card — default to all campaign platforms selected
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(campaignPlatforms);
-
-  function togglePlatform(p: string) {
-    setSelectedPlatforms((prev) =>
-      prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
-    );
-  }
 
   function copyCaption() {
     navigator.clipboard.writeText(`${idea.hook}\n\n${idea.caption}`);
@@ -458,7 +483,7 @@ function IdeaCard({ idea, index, campaignPlatforms, onSave, onDelete, variant }:
   }
 
   return (
-    <div className={`rounded-2xl border shadow-sm text-gray-900 overflow-hidden transition-colors ${variant === "saved" ? "border-green-300 bg-green-50" : "border-gray-100 bg-white"}`}>
+    <div className={`rounded-2xl border shadow-sm text-gray-900 overflow-hidden transition-colors ${isSaved ? "border-green-300 bg-green-50" : "border-gray-100 bg-white"}`}>
       <div className="p-4">
         {/* Top row: badges left, checkbox right */}
         <div className="flex items-start justify-between mb-3">
@@ -492,10 +517,10 @@ function IdeaCard({ idea, index, campaignPlatforms, onSave, onDelete, variant }:
           <div
             onClick={onSave}
             className={`w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer transition-colors shrink-0 mt-0.5 ${
-              variant === "saved" ? "border-indigo-500 bg-indigo-500" : "border-gray-300 hover:border-indigo-400"
+              isSaved ? "border-indigo-500 bg-indigo-500" : "border-gray-300 hover:border-indigo-400"
             }`}
           >
-            {variant === "saved" && (
+            {isSaved && (
               <svg className="h-3 w-3 text-white" viewBox="0 0 10 10" fill="none">
                 <path d="M2 5l2.5 2.5L8 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>

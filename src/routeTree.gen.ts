@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as StrategyRouteImport } from './routes/strategy'
 import { Route as PostIdeationRouteImport } from './routes/post-ideation'
+import { Route as PostGenerationRouteImport } from './routes/post-generation'
 import { Route as CampaignsRouteImport } from './routes/campaigns'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -22,6 +23,11 @@ const StrategyRoute = StrategyRouteImport.update({
 const PostIdeationRoute = PostIdeationRouteImport.update({
   id: '/post-ideation',
   path: '/post-ideation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PostGenerationRoute = PostGenerationRouteImport.update({
+  id: '/post-generation',
+  path: '/post-generation',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CampaignsRoute = CampaignsRouteImport.update({
@@ -38,12 +44,14 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/campaigns': typeof CampaignsRoute
+  '/post-generation': typeof PostGenerationRoute
   '/post-ideation': typeof PostIdeationRoute
   '/strategy': typeof StrategyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/campaigns': typeof CampaignsRoute
+  '/post-generation': typeof PostGenerationRoute
   '/post-ideation': typeof PostIdeationRoute
   '/strategy': typeof StrategyRoute
 }
@@ -51,20 +59,33 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/campaigns': typeof CampaignsRoute
+  '/post-generation': typeof PostGenerationRoute
   '/post-ideation': typeof PostIdeationRoute
   '/strategy': typeof StrategyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/campaigns' | '/post-ideation' | '/strategy'
+  fullPaths:
+    | '/'
+    | '/campaigns'
+    | '/post-generation'
+    | '/post-ideation'
+    | '/strategy'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/campaigns' | '/post-ideation' | '/strategy'
-  id: '__root__' | '/' | '/campaigns' | '/post-ideation' | '/strategy'
+  to: '/' | '/campaigns' | '/post-generation' | '/post-ideation' | '/strategy'
+  id:
+    | '__root__'
+    | '/'
+    | '/campaigns'
+    | '/post-generation'
+    | '/post-ideation'
+    | '/strategy'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CampaignsRoute: typeof CampaignsRoute
+  PostGenerationRoute: typeof PostGenerationRoute
   PostIdeationRoute: typeof PostIdeationRoute
   StrategyRoute: typeof StrategyRoute
 }
@@ -83,6 +104,13 @@ declare module '@tanstack/react-router' {
       path: '/post-ideation'
       fullPath: '/post-ideation'
       preLoaderRoute: typeof PostIdeationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/post-generation': {
+      id: '/post-generation'
+      path: '/post-generation'
+      fullPath: '/post-generation'
+      preLoaderRoute: typeof PostGenerationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/campaigns': {
@@ -105,6 +133,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CampaignsRoute: CampaignsRoute,
+  PostGenerationRoute: PostGenerationRoute,
   PostIdeationRoute: PostIdeationRoute,
   StrategyRoute: StrategyRoute,
 }
