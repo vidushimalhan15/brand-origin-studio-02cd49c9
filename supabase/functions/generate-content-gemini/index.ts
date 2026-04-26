@@ -440,7 +440,7 @@ ${outputSchema}
 Generate the content now.`;
 
     // ─── Call Gemini ──────────────────────────────────────────────────────────
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${geminiApiKey}`;
 
     const geminiRes = await fetch(url, {
       method: "POST",
