@@ -3,6 +3,7 @@ import { Sparkles, Lightbulb, RefreshCw, ChevronUp, ChevronDown, Target, Copy, T
 import { generatePostIdeas, fetchPeecInsights } from "@/server/brand.functions";
 import type { PostIdea } from "@/server/brand.functions";
 import { loadBrandProfile, loadLatestCampaignFromDB, loadPostIdeationState, savePostIdeationState } from "@/hooks/use-brand-store";
+import { getPlatformIcon } from "@/utils/platformIcons";
 
 const PLATFORM_COLORS: Record<string, string> = {
   LinkedIn: "bg-blue-100 text-blue-700",
@@ -405,7 +406,7 @@ export default function PostIdeation() {
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             {ideas.map((idea, i) => (
-              <IdeaCard key={idea.id} idea={idea} index={i + 1} onSave={() => saveIdea(idea)} onDelete={() => setIdeas(prev => prev.filter(x => x.id !== idea.id))} variant="suggestion" />
+              <IdeaCard key={idea.id} idea={idea} index={i + 1} campaignPlatforms={platforms} onSave={() => saveIdea(idea)} onDelete={() => setIdeas(prev => prev.filter(x => x.id !== idea.id))} variant="suggestion" />
             ))}
           </div>
         </div>
@@ -422,7 +423,7 @@ export default function PostIdeation() {
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             {savedIdeas.map((idea, i) => (
-              <IdeaCard key={idea.id} idea={idea} index={i + 1} onSave={() => unsaveIdea(idea.id)} onDelete={() => unsaveIdea(idea.id)} variant="saved" />
+              <IdeaCard key={idea.id} idea={idea} index={i + 1} campaignPlatforms={platforms} onSave={() => unsaveIdea(idea.id)} onDelete={() => unsaveIdea(idea.id)} variant="saved" />
             ))}
           </div>
         </div>
@@ -431,11 +432,24 @@ export default function PostIdeation() {
   );
 }
 
-function IdeaCard({ idea, index, onSave, onDelete, variant }: {
-  idea: PostIdea & { peecSource?: string | null; peecSignal?: string }; index: number; onSave: () => void; onDelete: () => void; variant: "suggestion" | "saved";
+function IdeaCard({ idea, index, campaignPlatforms, onSave, onDelete, variant }: {
+  idea: PostIdea & { peecSource?: string | null; peecSignal?: string };
+  index: number;
+  campaignPlatforms: string[];
+  onSave: () => void;
+  onDelete: () => void;
+  variant: "suggestion" | "saved";
 }) {
   const [showStrategy, setShowStrategy] = useState(false);
   const [copied, setCopied] = useState(false);
+  // Selected platforms per card — default to all campaign platforms selected
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(campaignPlatforms);
+
+  function togglePlatform(p: string) {
+    setSelectedPlatforms((prev) =>
+      prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
+    );
+  }
 
   function copyCaption() {
     navigator.clipboard.writeText(`${idea.hook}\n\n${idea.caption}`);
@@ -444,7 +458,7 @@ function IdeaCard({ idea, index, onSave, onDelete, variant }: {
   }
 
   return (
-    <div className="rounded-2xl border border-gray-100 bg-white shadow-sm text-gray-900 overflow-hidden">
+    <div className={`rounded-2xl border shadow-sm text-gray-900 overflow-hidden transition-colors ${variant === "saved" ? "border-green-300 bg-green-50" : "border-gray-100 bg-white"}`}>
       <div className="p-4">
         {/* Top row: badges left, checkbox right */}
         <div className="flex items-start justify-between mb-3">
