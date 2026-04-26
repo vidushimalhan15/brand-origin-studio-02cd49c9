@@ -74,7 +74,7 @@ Return ONLY this JSON array (no wrapping object):
 
 Generate exactly ${numberOfPosts} ideas now.`;
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemma-4-27b-it:generateContent?key=${geminiApiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:generateContent?key=${geminiApiKey}`;
 
     const geminiRes = await fetch(url, {
       method: "POST",
