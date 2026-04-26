@@ -57,7 +57,10 @@ Respond with ONLY the JSON array, starting with [ and ending with ]. No other te
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         system_instruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+        contents: [
+          { role: "user", parts: [{ text: userPrompt }] },
+          { role: "model", parts: [{ text: "[" }] },
+        ],
         generationConfig: {
           temperature: 0.85,
           maxOutputTokens: 8192,
@@ -74,16 +77,23 @@ Respond with ONLY the JSON array, starting with [ and ending with ]. No other te
     }
 
     const geminiData = await geminiRes.json();
+    console.log("[gemma] full response:", JSON.stringify(geminiData).slice(0, 2000));
+
     const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!rawText) {
+      console.error("[gemma] no rawText. candidates:", JSON.stringify(geminiData.candidates ?? null));
       return new Response(
-        JSON.stringify({ error: "No content returned from Gemma" }),
+        JSON.stringify({ error: "No content returned from Gemma", debug: geminiData }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // Parse Gemma's plain text response — try several strategies
+    // We pre-filled "[" as the model turn, so prepend it back
+    const fullText = "[" + rawText;
+    console.log("[gemma] fullText (first 1000):", fullText.slice(0, 1000));
+
+    // Parse Gemma's response — try several strategies
     let ideas: unknown[] = [];
     let parsed = false;
 
@@ -96,29 +106,20 @@ Respond with ONLY the JSON array, starting with [ and ending with ]. No other te
       }
     };
 
-    // 1. Direct parse
-    const direct = tryParse(rawText);
+    // 1. Direct parse of prefixed text
+    const direct = tryParse(fullText);
     if (direct) { ideas = direct; parsed = true; }
 
-    // 2. Strip markdown fences ```json ... ```
+    // 2. Strip markdown fences
     if (!parsed) {
-      const stripped = rawText.replace(/^```[a-zA-Z]*\s*/m, "").replace(/\s*```\s*$/m, "").trim();
+      const stripped = fullText.replace(/^```[a-zA-Z]*\s*/m, "").replace(/\s*```\s*$/m, "").trim();
       const r = tryParse(stripped);
       if (r) { ideas = r; parsed = true; }
     }
 
-    // 3. Extract first [...] block (handles prose before/after)
+    // 3. Extract first [...] block
     if (!parsed) {
-      const match = rawText.match(/(\[[\s\S]*\])/);
-      if (match) {
-        const r = tryParse(match[1]);
-        if (r) { ideas = r; parsed = true; }
-      }
-    }
-
-    // 4. Extract first {...} block (wrapped object)
-    if (!parsed) {
-      const match = rawText.match(/(\{[\s\S]*\})/);
+      const match = fullText.match(/(\[[\s\S]*\])/);
       if (match) {
         const r = tryParse(match[1]);
         if (r) { ideas = r; parsed = true; }
@@ -126,9 +127,9 @@ Respond with ONLY the JSON array, starting with [ and ending with ]. No other te
     }
 
     if (!parsed || ideas.length === 0) {
-      console.error("[gemma] raw response (first 1000):", rawText.slice(0, 1000));
+      console.error("[gemma] failed to parse. fullText (first 1000):", fullText.slice(0, 1000));
       return new Response(
-        JSON.stringify({ error: "Failed to parse Gemma JSON response", raw: rawText.slice(0, 500) }),
+        JSON.stringify({ error: "Failed to parse Gemma JSON response", raw: fullText.slice(0, 500) }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
