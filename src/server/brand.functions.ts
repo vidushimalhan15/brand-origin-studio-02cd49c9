@@ -632,6 +632,7 @@ export const generatePostIdeas = createServerFn({ method: "POST" })
           contentPillars: data.contentPillars,
           trendingContext: data.trendingContext,
           count: data.count,
+          model: "gemini-3-flash-preview",
         }),
       });
 

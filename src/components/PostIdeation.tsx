@@ -332,7 +332,7 @@ export default function PostIdeation() {
           >
             {generating
               ? <><div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />Generating...</>
-              : <><Sparkles className="h-3.5 w-3.5" />Generate with Gemma 4</>
+              : <><Sparkles className="h-3.5 w-3.5" />Generate with Gemini 3</>
             }
           </button>
           {genError && <p className="text-xs text-red-500">{genError}</p>}
