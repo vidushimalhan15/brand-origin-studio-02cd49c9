@@ -592,6 +592,8 @@ export type PostIdea = {
   contentType: string;
   pillar: string;
   hook: string;
+  peecSource?: "ai_visibility" | "reputation_fix" | null;
+  peecSignal?: string; // the specific question/negative point this idea addresses
 };
 
 type GeneratePostIdeasResult = {
@@ -654,6 +656,8 @@ export const generatePostIdeas = createServerFn({ method: "POST" })
           contentType: String(idea.contentType ?? "Educational"),
           pillar: String(idea.pillar ?? ""),
           hook: String(idea.hook ?? "").slice(0, 150),
+          peecSource: idea.peecSource ?? null,
+          peecSignal: idea.peecSignal ? String(idea.peecSignal).slice(0, 200) : undefined,
         })),
       };
     } catch (err) {

@@ -33,22 +33,35 @@ Deno.serve(async (req) => {
 
     const systemPrompt = `You output ONLY raw JSON arrays. No prose, no markdown, no explanation. Your entire response must start with [ and end with ].`;
 
-    const userPrompt = `Brand: ${brandName}. About: ${introduction || "N/A"}. Platforms: ${platformList}. Content pillars: ${pillarList}.${trendingContext ? ` Trending signals: ${trendingContext.slice(0, 500)}.` : ""} Seed: ${variationSeed}.
+    const userPrompt = `Brand: ${brandName}
+About: ${introduction || "N/A"}
+Platforms to use (ONLY these): ${platformList}
+Content pillars: ${pillarList}
+Seed: ${variationSeed}
+${trendingContext ? `\n--- CONTEXT & SIGNALS ---\n${trendingContext}\n--- END SIGNALS ---` : ""}
 
-Output a JSON array of exactly ${numberOfPosts} post ideas. Each element must have these exact keys: id, title, caption, platform, contentType, pillar, hook.
+Generate exactly ${numberOfPosts} post ideas as a JSON array.
 
-Rules:
-- id: "idea-1" through "idea-${numberOfPosts}"
-- title: max 8 words, specific and actionable
-- caption: 120-200 chars, platform-appropriate, 2-3 hashtags
-- platform: one of LinkedIn, Instagram, X/Twitter, YouTube, Facebook, Blog Post
+IMPORTANT RULES FOR PEEC SIGNALS:
+- If context includes "PEEC AI VISIBILITY" questions: create dedicated posts that position ${brandName} as THE answer to those questions. Set peecSource="ai_visibility" and peecSignal=the exact question being addressed.
+- If context includes "PEEC REPUTATION FIX" negatives: create posts using real customer stories or facts to counter each negative. Set peecSource="reputation_fix" and peecSignal=the exact negative being countered.
+- For all other posts: peecSource=null, peecSignal=null.
+
+Each JSON object must have EXACTLY these keys:
+- id: "idea-1" to "idea-${numberOfPosts}"
+- title: max 8 words, specific
+- caption: 120-200 chars, 2-3 hashtags, ready to post
+- platform: MUST be one of the provided platforms: ${platformList}
 - contentType: one of Educational, Thought Leadership, Behind-the-Scenes, Trending, Engagement, Inspirational, Promotional, UGC
 - pillar: which content pillar this serves
-- hook: one punchy scroll-stopping opening sentence
-- Mix content types: ~40% Educational/Thought Leadership, ~30% Engagement/Inspirational, ~30% Promotional/Trending
-- Vary platforms across the list above
+- hook: one punchy scroll-stopping sentence
+- peecSource: "ai_visibility" | "reputation_fix" | null
+- peecSignal: the specific question or negative point this post addresses, or null
 
-Respond with ONLY the JSON array, starting with [ and ending with ]. No other text.`;
+Distribute across content types: ~40% Educational/Thought Leadership, ~30% Engagement/Inspirational, remainder Promotional/Trending/Peec.
+Vary platforms across: ${platformList}.
+
+Return ONLY the raw JSON array. No prose. No markdown. Start with [ end with ].`;
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${geminiApiKey}`;
 

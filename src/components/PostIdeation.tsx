@@ -152,22 +152,37 @@ export default function PostIdeation() {
       .map((id) => { const a = allArticles.find((x) => x.id === id); return a ? `${a.title}: ${a.content}` : null; })
       .filter(Boolean).join("\n\n");
 
-    // Build peec context from selected signals
-    const peecContext: string[] = [];
+    // Build structured Peec context — label each signal so Gemini can tag ideas
+    const peecAiVisibilitySignals: string[] = [];
+    const peecReputationSignals: string[] = [];
+
     if (peecData) {
       Array.from(selectedPeecSignals.prompts).forEach((i) => {
         const p = peecData.volumeRankedPrompts[i];
-        if (p) peecContext.push(`AI question: ${p.prompt}`);
+        if (p) peecAiVisibilitySignals.push(p.prompt);
       });
       Array.from(selectedPeecSignals.chatGaps).forEach((i) => {
-        if (peecData.chatGaps[i]) peecContext.push(`Content gap: ${peecData.chatGaps[i]}`);
+        if (peecData.chatGaps[i]) peecReputationSignals.push(peecData.chatGaps[i]);
       });
-      if (selectedPeecSignals.ugcBrief.size > 0 && peecData.ugcBrief) {
-        peecContext.push(`UGC brief: ${peecData.ugcBrief}`);
-      }
+      Array.from(selectedPeecSignals.ugcBrief).forEach((i) => {
+        const lines = peecData.ugcBrief.split("|||").filter(Boolean);
+        if (lines[i]) peecReputationSignals.push(lines[i].trim());
+      });
     }
 
-    const combinedContext = [...(trendingContext ? [trendingContext] : []), ...peecContext].join("\n\n");
+    const peecSection = [
+      peecAiVisibilitySignals.length > 0
+        ? `PEEC AI VISIBILITY — Questions people are asking AI about ${brandName} (create posts that make ${brandName} the answer):\n${peecAiVisibilitySignals.map((q, i) => `${i + 1}. ${q}`).join("\n")}`
+        : "",
+      peecReputationSignals.length > 0
+        ? `PEEC REPUTATION FIX — Negative things AI says about ${brandName} (create posts that counter these narratives with real stories):\n${peecReputationSignals.map((q, i) => `${i + 1}. ${q}`).join("\n")}`
+        : "",
+    ].filter(Boolean).join("\n\n");
+
+    const combinedContext = [
+      trendingContext || "",
+      peecSection,
+    ].filter(Boolean).join("\n\n");
 
     try {
       const res = await generatePostIdeas({
@@ -417,7 +432,7 @@ export default function PostIdeation() {
 }
 
 function IdeaCard({ idea, index, onSave, onDelete, variant }: {
-  idea: PostIdea; index: number; onSave: () => void; onDelete: () => void; variant: "suggestion" | "saved";
+  idea: PostIdea & { peecSource?: string | null; peecSignal?: string }; index: number; onSave: () => void; onDelete: () => void; variant: "suggestion" | "saved";
 }) {
   const [showStrategy, setShowStrategy] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -442,10 +457,20 @@ function IdeaCard({ idea, index, onSave, onDelete, variant }: {
                 {idea.contentType}
               </span>
             )}
-            {/* Peec badge if pillar hints at it */}
-            {idea.pillar?.toLowerCase().includes("reputation") && (
-              <span className="bg-red-100 text-red-700 rounded-full px-2.5 py-0.5 text-xs font-semibold">
+            {idea.peecSource === "reputation_fix" && (
+              <span
+                className="bg-red-100 text-red-700 rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                title={idea.peecSignal ?? "Counters a negative AI narrative about this brand"}
+              >
                 ⚡ Peec · Reputation Fix
+              </span>
+            )}
+            {idea.peecSource === "ai_visibility" && (
+              <span
+                className="bg-purple-100 text-purple-700 rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                title={idea.peecSignal ?? "Addresses a real AI question about this brand"}
+              >
+                ⚡ Peec · AI Visibility
               </span>
             )}
           </div>
@@ -485,6 +510,14 @@ function IdeaCard({ idea, index, onSave, onDelete, variant }: {
               <div className="flex items-start gap-2">
                 <span className="text-gray-500 font-medium whitespace-nowrap">🪝 Hook:</span>
                 <span className="text-gray-700 italic">"{idea.hook}"</span>
+              </div>
+            )}
+            {idea.peecSignal && (
+              <div className="flex items-start gap-2">
+                <span className="text-gray-500 font-medium whitespace-nowrap">
+                  {idea.peecSource === "reputation_fix" ? "🛡️ Counters:" : "🎯 Addresses:"}
+                </span>
+                <span className="text-gray-700 leading-snug">{idea.peecSignal}</span>
               </div>
             )}
           </div>
