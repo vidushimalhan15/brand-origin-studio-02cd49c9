@@ -67,29 +67,120 @@ SLIDE 1 HOOK RULES:
 - Never start with "I" as the very first word`;
 }
 
-function getLinkedInCarouselInstructions(slidesCount: number, length: string): string {
-  const bodyWords: Record<string, string> = { Short: "6-12", Medium: "14-20", Long: "18-26" };
-  const words = bodyWords[length] || bodyWords.Medium;
-  const totalSlides = Math.max(4, Math.min(slidesCount, length === "Long" ? 9 : 6));
+function getCarouselInstructions(slidesCount: number, length: string, brandName: string): string {
+  const seed = Math.floor(Math.random() * 4);
+
+  const TEMPLATES = [
+    {
+      name: "Rules / Educational",
+      label: "A",
+      structure: `SLIDE 1 — HOOK: [Headline: one flowing sentence about the topic]\\n\\n[Optional subtext: separate supporting idea]\\n\\n[Short CTA: e.g. "Here's how." / "Let's break it down." / "Swipe through."]
+SLIDES 2-N — RULE SLIDES (one rule per slide):
+Rule [N]: [Principle]
+Bad: "[Generic / weak example]"
+
+Good: "[Specific / strong example]"
+
+[1 sentence takeaway]
+LAST SLIDE — CTA: [Positive question] Follow [brand] for more about [topic].`,
+      example: `SLIDE 1: How to create educational content that actually attracts customers.\\n\\nEven if you hate marketing.\\n\\nHere's how.
+SLIDE 2: Rule 1: Solve real business problems\\nBad: "What is positioning and why it matters"\\n\\nGood: "Why you keep losing leads, and how to fix your offer."\\n\\nYour content should fix pain, not pass knowledge.
+SLIDE 3: Rule 2: Make your clients feel understood\\nBad: "Top 5 productivity hacks for solopreneurs"\\n\\nGood: "What happens when solopreneurs are too busy to sell (and how to fix it)"\\n\\nDon't try to impress, relate.
+LAST SLIDE: Enjoyed this?\\n\\nFollow me for more about educational content.`,
+    },
+    {
+      name: "Step-by-Step Tutorial",
+      label: "B",
+      structure: `SLIDE 1 — HOOK: [Headline: one sentence result + tools] e.g. "I used X to achieve Y."\\n\\n[Optional: tools or context]\\n\\n[Short CTA]
+SLIDE 2 — CONTEXT: [Tool or concept]\\n\\nYou can use [feature] to achieve [result].\\n\\nHere's how →
+SLIDES 3-N — STEPS: Step [N]: [Action]\\n\\n[Explain the step]\\n\\nMy setup:\\n[Tool → purpose]
+LAST SLIDE — CTA: Found this helpful?\\n\\nSave this for later.`,
+      example: `SLIDE 1: I used AI to create a client deck in 2 minutes.\\n\\nUsing Gmail + Claude + Gamma.\\n\\nLet me show you.
+SLIDE 2: AI document generation\\n\\nYou can use AI to turn raw notes into polished decks.\\n\\nHere's how →
+SLIDE 3: Step 1: Gather your inputs\\n\\nPull your meeting notes and emails together.\\n\\nMy setup:\\nGmail → context\\nNotions → structure
+LAST SLIDE: Found this helpful?\\n\\nSave this for later.`,
+    },
+    {
+      name: "Method / Framework",
+      label: "C",
+      structure: `SLIDE 1 — HOOK: [Headline about the problem]\\n\\n[Hint at the solution]\\n\\n[Short CTA: "Here's the framework."]
+SLIDE 2 — METHOD INTRO: Here's the process:\\n\\n[Name of framework]\\n\\nFollow these steps.
+SLIDES 3-N — STEPS: Step [N]: [Action]\\n\\n[Explain]\\n\\nKey instruction: [important rule]
+SLIDE N-1 — PROOF: One of our clients followed this process.\\n\\nWithin [timeframe]\\n\\n[measurable result]
+LAST SLIDE — CTA: Want more [systems/frameworks] like this?\\n\\nFollow [brand] for more [topic].`,
+      example: `SLIDE 1: Why inconsistent content kills your pipeline.\\n\\nYou need a repeatable content system.\\n\\nHere's the framework.
+SLIDE 2: Here's the process:\\n\\nThe 4-Step Content Engine\\n\\nFollow these steps.
+SLIDE 3: Step 1: Audit your last 30 days\\n\\nPull every post, email, and campaign you ran.\\n\\nUse Google Analytics + your CRM export.
+SLIDE 4: Step 2: Tag by content type\\n\\nCategorize each piece: educational, promotional, social proof, or engagement.\\n\\nKey instruction: if more than 60% is promotional, your mix is off.
+LAST SLIDE: Want more systems like this?\\n\\nFollow me for more content strategy.`,
+    },
+    {
+      name: "Myth vs Reality",
+      label: "D",
+      structure: `SLIDE 1 — HOOK: [Headline about the myth]\\n\\n[Optional subtext]\\n\\n[Short CTA]
+SLIDE 2 — THE MYTH: The myth:\\n\\n[myth explanation]
+SLIDE 3 — WHY PEOPLE BELIEVE IT: Why people believe it:\\n\\n• [reason]\\n• [reason]\\n• [reason]
+SLIDE 4 — THE REALITY: The reality:\\n\\n[truth]
+SLIDE 5 — WHAT WORKS: What actually works:\\n\\n• [action]\\n• [action]\\n• [action]
+SLIDE 6 — TAKEAWAY: Takeaway:\\n\\n[clear insight]
+LAST SLIDE — CTA: Follow [brand] for more insights about [topic].`,
+      example: `SLIDE 1: You need to post every day to grow on LinkedIn.\\n\\nThat's what everyone says. The reality is different.\\n\\nThis might surprise you.
+SLIDE 2: The myth:\\n\\nPosting daily guarantees visibility and keeps you top of mind.
+SLIDE 3: Why people believe it:\\n\\n• Social media gurus repeat it\\n• Algorithms reward activity\\n• More posts feel like more chances
+SLIDE 4: The reality:\\n\\nGrowth comes from valuable insights, not just more content.
+SLIDE 5: What actually works:\\n\\n• Share original perspectives\\n• Solve specific problems\\n• Write for one reader, not everyone
+SLIDE 6: Takeaway:\\n\\nConsistency matters, but quality and relevance matter more.
+LAST SLIDE: Follow for more insights about LinkedIn growth.`,
+    },
+  ];
+
+  const template = TEMPLATES[seed];
+  const totalSlides = length === "Long" ? 8 : length === "Short" ? 4 : 6;
+  const ctaOptions = ["Let's explore." , "Here's what I found.", "Swipe to find out.", "Let me show you.", "Here's the breakdown.", "Let's get into it.", "Here's how.", "Let's dive in.", "This might surprise you.", "Swipe through."];
+  const ctaPick = ctaOptions[Math.floor(Math.random() * ctaOptions.length)];
+
   return `
-LINKEDIN CAROUSEL FORMAT:
-- Generate EXACTLY ${totalSlides} slides as a JSON array of {title, content} objects
-- NO hashtags on slides — hashtags go in caption only
-- NO markdown bold/italic — plain text only
-- NO em dashes (use hyphen instead)
+CAROUSEL FORMAT — TEMPLATE ${template.label}: "${template.name}"
+(Same format used in SocialFlow for LinkedIn + Instagram carousels)
 
-SLIDE STRUCTURE:
-- Slide 1 (Hook): Compelling headline (one sentence) + optional 1-line subtext + short CTA ("Here's how." / "Let me show you." / "Swipe through.")
-- Slides 2 to ${totalSlides - 1} (Body): Each slide = one clear idea, ${words} words in "content"
-  - Format: "Headline.\\n\\nBody text that expands on it."
-  - The \\n\\n between headline and body is MANDATORY
-- Slide ${totalSlides} (CTA): Engagement question or call-to-action (short)
+CRITICAL FORMAT RULES:
+- Generate EXACTLY ${totalSlides} slides
+- "title" field: ALWAYS empty string "" — put ALL text in "content"
+- NO hashtags on any slide — hashtags go in caption only
+- NO markdown bold/italic (**text**) — plain text only
+- NO em dashes (—) — use hyphen (-) instead
+- Each slide readable in 2-3 seconds max
 
-RULES:
-- "title" field: leave empty for all slides (put ALL text in "content")
-- Each slide must be readable in 2-3 seconds
-- Vary structure: some slides use short bullets (•), others use prose
-- The hook MUST be original — do NOT repeat the post idea title`;
+🚨 TEXT FORMATTING — MANDATORY FOR EVERY SLIDE:
+Each slide's "content" MUST use \\n\\n between sections:
+  "content": "Headline sentence.\\n\\nBody text that expands on it."
+For slides with bullets:
+  "content": "Headline.\\n\\n• Point one\\n• Point two\\n• Point three"
+
+❌ WRONG: "The problem: Founders juggle strategy and design across scattered tools."
+✅ CORRECT: "The problem:\\n\\nFounders juggle strategy and design across scattered tools."
+
+🚨 SLIDE 1 RULES (MANDATORY):
+1. Headline = ONE flowing sentence (do NOT split it across lines)
+   ❌ "How to turn\\none podcast episode\\ninto 10 posts"
+   ✅ "How to turn one podcast episode into 10 LinkedIn posts."
+2. Optional subtext = a SEPARATE supporting idea (never part of headline)
+3. End slide 1 with a short CTA — pick from: "${ctaPick}" or similar. VARY it each time.
+4. Keep slide 1 short and visually clean — no dense blocks
+   Format: "[Headline]\\n\\n[Optional subtext]\\n\\n[Short CTA]"
+
+LAST SLIDE MUST always be a dedicated CTA slide. Never merge CTA into a content slide.
+
+TEMPLATE STRUCTURE TO FOLLOW:
+${template.structure}
+
+REFERENCE EXAMPLE (adapt to brand topic — do NOT copy verbatim):
+${template.example}
+
+JSON FORMAT — each slide:
+{ "title": "", "content": "First line (headline)\\n\\nSecond section\\n\\nThird section" }
+
+⚠️ EVERY slide MUST have \\n\\n between sections. LAST slide MUST be CTA.`;
 }
 
 function getInstagramInstructions(length: string): string {
@@ -215,7 +306,7 @@ Deno.serve(async (req) => {
     // ─── Build platform format instructions ───────────────────────────────────
     let formatInstructions = "";
     if (isCarousel) {
-      formatInstructions = getLinkedInCarouselInstructions(slidesCount, length);
+      formatInstructions = getCarouselInstructions(slidesCount, length, brandName);
     } else if (isBlog) {
       formatInstructions = getBlogInstructions(wordLimit);
     } else if (isNewsletter) {
