@@ -31,48 +31,24 @@ Deno.serve(async (req) => {
     const pillarList = (contentPillars ?? []).filter(Boolean).join(", ") || "Brand Awareness, Thought Leadership";
     const variationSeed = Math.floor(Date.now() / 1000);
 
-    const systemPrompt = `You are a Senior Social Media Strategist generating platform-specific post ideas. Return ONLY a valid JSON array — no markdown, no explanation, no code blocks.`;
+    const systemPrompt = `You output ONLY raw JSON arrays. No prose, no markdown, no explanation. Your entire response must start with [ and end with ].`;
 
-    const userPrompt = `Generation seed: ${variationSeed} — produce UNIQUE ideas every time.
+    const userPrompt = `Brand: ${brandName}. About: ${introduction || "N/A"}. Platforms: ${platformList}. Content pillars: ${pillarList}.${trendingContext ? ` Trending signals: ${trendingContext.slice(0, 500)}.` : ""} Seed: ${variationSeed}.
 
-BRAND:
-Name: ${brandName}
-${introduction ? `About: ${introduction}` : ""}
+Output a JSON array of exactly ${numberOfPosts} post ideas. Each element must have these exact keys: id, title, caption, platform, contentType, pillar, hook.
 
-CAMPAIGN:
-Platforms: ${platformList}
-Content Pillars: ${pillarList}
-${trendingContext ? `\nTRENDING SIGNALS (weave relevant ones into TREND posts only):\n${trendingContext}` : ""}
+Rules:
+- id: "idea-1" through "idea-${numberOfPosts}"
+- title: max 8 words, specific and actionable
+- caption: 120-200 chars, platform-appropriate, 2-3 hashtags
+- platform: one of LinkedIn, Instagram, X/Twitter, YouTube, Facebook, Blog Post
+- contentType: one of Educational, Thought Leadership, Behind-the-Scenes, Trending, Engagement, Inspirational, Promotional, UGC
+- pillar: which content pillar this serves
+- hook: one punchy scroll-stopping opening sentence
+- Mix content types: ~40% Educational/Thought Leadership, ~30% Engagement/Inspirational, ~30% Promotional/Trending
+- Vary platforms across the list above
 
-TASK: Generate exactly ${numberOfPosts} post ideas. Distribute them across these content types:
-- Educational (how-to, tips, myth-busting — NO product selling)
-- Engagement (polls, questions, community)
-- Inspirational (brand values, behind-the-scenes)
-- Trend (tie to trending signals above if provided)
-- Product-Focused (features, benefits, conversion — only ~30% max)
-
-RULES:
-1. Educational/Engagement/Inspirational/Trend posts must NOT mention products or use sales language
-2. Each idea needs a strong hook — make the first sentence impossible to scroll past
-3. Vary formats: Single Image, Carousel, Reel, Poll, Article, Text Post
-4. Platform-fit: LinkedIn = professional/thought leadership, Instagram = visual/lifestyle, X/Twitter = concise/punchy
-5. Every idea must have a concrete angle (framework, checklist, myth-bust, story, statistic, hot take)
-6. Generate COMPLETELY DIFFERENT ideas — use the seed above for variety
-
-Return ONLY this JSON array (no wrapping object):
-[
-  {
-    "id": "idea-1",
-    "title": "Specific actionable title (max 8 words)",
-    "caption": "Ready-to-post caption (120-200 chars, includes 2-3 hashtags)",
-    "platform": "LinkedIn | Instagram | X/Twitter | YouTube | Facebook | Blog Post",
-    "contentType": "Educational | Promotional | UGC | Thought Leadership | Behind-the-Scenes | Trending | Engagement | Inspirational",
-    "pillar": "which content pillar this serves",
-    "hook": "Opening line — the scroll-stopper sentence"
-  }
-]
-
-Generate exactly ${numberOfPosts} ideas now.`;
+Respond with ONLY the JSON array, starting with [ and ending with ]. No other text.`;
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:generateContent?key=${geminiApiKey}`;
 
