@@ -18,10 +18,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     <div className="flex min-h-screen bg-slate-50 antialiased">
       <aside className="w-64 bg-white border-r border-slate-200 fixed h-full flex flex-col">
         <div className="p-6">
-          <div className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2 no-underline group">
             <img src={centerIcon} alt="SocialFlow logo" className="w-7 h-7 object-contain" />
-            <h1 className="text-2xl font-bold text-indigo-600 tracking-tight">SocialFlow</h1>
-          </div>
+            <h1 className="text-2xl font-bold text-indigo-600 tracking-tight group-hover:text-indigo-500 transition-colors">SocialFlow</h1>
+          </Link>
         </div>
         <nav className="flex-1 px-4 space-y-1">
           {navigation.map((item) => {

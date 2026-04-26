@@ -1,15 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import AppLayout from "@/components/AppLayout";
-import BrandIdentityStep from "@/components/BrandIdentityStep";
+import LandingPage from "@/pages/LandingPage";
 
 export const Route = createFileRoute("/")({
   component: Index,
 });
 
 function Index() {
-  return (
-    <AppLayout>
-      <BrandIdentityStep />
-    </AppLayout>
-  );
+  return <LandingPage />;
 }

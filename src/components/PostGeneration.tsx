@@ -37,7 +37,7 @@ function HighlightedText({ text, peecSignal }: { text: string; peecSignal?: stri
   return (
     <span className="whitespace-pre-wrap">
       {parts.map((part, i) =>
-        regex.test(part)
+        regex.source !== "(?:)" && part.toLowerCase().match(new RegExp(escaped.join("|"), "i"))
           ? <mark key={i} className="bg-yellow-100 text-yellow-900 rounded px-0.5 not-italic font-medium">{part}</mark>
           : <span key={i}>{part}</span>
       )}

@@ -643,7 +643,11 @@ export const generatePostContent = createServerFn({ method: "POST" })
           brandName: data.brandName,
           introduction: data.introduction,
           idea: data.idea,
-          contentFormat: data.idea.contentFormat ?? "Text Post",
+          contentFormat: data.idea.contentFormat ?? (
+            ["instagram", "linkedin", "facebook"].includes(data.idea.platform.toLowerCase())
+              ? "Carousel"
+              : "Text Post"
+          ),
           length: "Medium",
         }),
       });
@@ -655,7 +659,7 @@ export const generatePostContent = createServerFn({ method: "POST" })
 
       const json = await res.json();
       if (json.error) return { content: "", error: json.error };
-      // caption is the feed text; slides is the asset text; content is fallback
+      console.log("[generatePostContent] slides count:", json.slides?.length, "format:", data.idea.contentFormat);
       const feedText = json.caption || json.content || "";
       return {
         content: feedText,
