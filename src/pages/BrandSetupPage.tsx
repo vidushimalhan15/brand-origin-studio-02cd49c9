@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { Building2, Package, Save, CheckCircle2 } from "lucide-react";
+import { Building2, Package, Save, CheckCircle2, Link2, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import AudienceProfiles from "@/components/AudienceProfiles";
+import { analyzeBrandUrl } from "@/server/brand.functions";
 import {
   saveBrandProfile,
   loadBrandProfile,
@@ -136,6 +137,9 @@ export default function BrandSetupPage() {
   const [introduction, setIntroduction] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [url, setUrl] = useState("");
+  const [analysing, setAnalysing] = useState(false);
+  const [analyseError, setAnalyseError] = useState("");
 
   useEffect(() => {
     loadBrandProfile().then((data) => {
@@ -145,6 +149,20 @@ export default function BrandSetupPage() {
       }
     });
   }, []);
+
+  async function handleAnalyse() {
+    if (!url.trim()) return;
+    setAnalysing(true);
+    setAnalyseError("");
+    const result = await analyzeBrandUrl({ data: { url: url.trim() } });
+    setAnalysing(false);
+    if (result.error) {
+      setAnalyseError(result.error);
+    } else {
+      if (result.brandName) setBrandName(result.brandName);
+      if (result.introduction) setIntroduction(result.introduction);
+    }
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -169,7 +187,39 @@ export default function BrandSetupPage() {
           <Building2 className="w-4 h-4 text-indigo-500" />
           <h3 className="text-sm font-semibold text-slate-800">Brand Identity</h3>
         </div>
-        <div className="space-y-3">
+
+        {/* URL Analyser */}
+        <div className="space-y-2">
+          <Label className="text-xs text-slate-600 mb-1 block">Analyse your website</Label>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+              <Input
+                placeholder="https://yourwebsite.com"
+                value={url}
+                onChange={(e) => { setUrl(e.target.value); setAnalyseError(""); }}
+                onKeyDown={(e) => e.key === "Enter" && handleAnalyse()}
+                className="text-sm pl-8"
+              />
+            </div>
+            <Button
+              size="sm"
+              onClick={handleAnalyse}
+              disabled={analysing || !url.trim()}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs flex items-center gap-1.5 shrink-0"
+            >
+              {analysing ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Analysing…</> : "✦ Analyse"}
+            </Button>
+          </div>
+          {analyseError && (
+            <div className="flex items-center gap-1.5 text-xs text-red-500">
+              <AlertCircle className="w-3.5 h-3.5" /> {analyseError}
+            </div>
+          )}
+          <p className="text-[11px] text-slate-400">Paste your website URL and we'll auto-fill your brand details.</p>
+        </div>
+
+        <div className="border-t border-border pt-3 space-y-3">
           <div>
             <Label className="text-xs text-slate-600 mb-1 block">Brand name</Label>
             <Input
