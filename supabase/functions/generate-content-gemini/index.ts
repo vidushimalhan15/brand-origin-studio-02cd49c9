@@ -263,10 +263,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
-    if (!geminiApiKey) {
+    const openAiKey = Deno.env.get("OPENAI_API_KEY");
+    if (!openAiKey) {
       return new Response(
-        JSON.stringify({ error: "GEMINI_API_KEY is not configured" }),
+        JSON.stringify({ error: "OPENAI_API_KEY is not configured" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -439,37 +439,39 @@ ${outputSchema}
 
 Generate the content now.`;
 
-    // ─── Call Gemini ──────────────────────────────────────────────────────────
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
-
-    const geminiRes = await fetch(url, {
+    // ─── Call OpenAI ──────────────────────────────────────────────────────────
+    const openAiRes = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${openAiKey}`,
+      },
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-        generationConfig: {
-          temperature: 0.75,
-          maxOutputTokens: 8192,
-          responseMimeType: "application/json",
-        },
+        model: "gpt-4o-mini",
+        temperature: 0.75,
+        max_tokens: 4096,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
       }),
     });
 
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
+    if (!openAiRes.ok) {
+      const errText = await openAiRes.text();
       return new Response(
-        JSON.stringify({ error: `Gemini API error ${geminiRes.status}: ${errText.slice(0, 300)}` }),
+        JSON.stringify({ error: `OpenAI API error ${openAiRes.status}: ${errText.slice(0, 300)}` }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    const geminiData = await geminiRes.json();
-    const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+    const openAiData = await openAiRes.json();
+    const rawText = openAiData.choices?.[0]?.message?.content ?? "";
 
     if (!rawText) {
       return new Response(
-        JSON.stringify({ error: "No content returned from Gemini" }),
+        JSON.stringify({ error: "No content returned from OpenAI" }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -502,7 +504,7 @@ Generate the content now.`;
 
     if (!parsed) {
       return new Response(
-        JSON.stringify({ error: "Failed to parse Gemini JSON response", raw: rawText.slice(0, 500) }),
+        JSON.stringify({ error: "Failed to parse OpenAI JSON response", raw: rawText.slice(0, 500) }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
