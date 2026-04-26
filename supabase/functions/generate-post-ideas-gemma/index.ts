@@ -86,7 +86,6 @@ Generate exactly ${numberOfPosts} ideas now.`;
         generationConfig: {
           temperature: 0.85,
           maxOutputTokens: 8192,
-          responseMimeType: "application/json",
         },
       }),
     });
