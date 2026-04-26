@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Sparkles, Lightbulb, RefreshCw, ChevronUp, ChevronDown, Target, Copy, Trash2, Edit2, Calendar } from "lucide-react";
 import { generatePostIdeas, fetchPeecInsights } from "@/server/brand.functions";
 import type { PostIdea } from "@/server/brand.functions";
-import { loadBrandProfile, loadLatestCampaignFromDB } from "@/hooks/use-brand-store";
+import { loadBrandProfile, loadLatestCampaignFromDB, loadPostIdeationState, savePostIdeationState } from "@/hooks/use-brand-store";
 
 const PLATFORM_COLORS: Record<string, string> = {
   LinkedIn: "bg-blue-100 text-blue-700",
@@ -62,18 +62,57 @@ export default function PostIdeation() {
 
   useEffect(() => {
     (async () => {
-      const [profile, campaign] = await Promise.all([loadBrandProfile(), loadLatestCampaignFromDB()]);
+      const [profile, campaign, saved] = await Promise.all([
+        loadBrandProfile(),
+        loadLatestCampaignFromDB(),
+        loadPostIdeationState(),
+      ]);
       if (profile) {
         setBrandName(profile.brandName);
         setIntroduction(profile.introduction);
-        if (profile.brandName) fetchPeec(profile.brandName, profile.introduction);
+        // Only fetch Peec if we don't have saved data
+        if (profile.brandName && !saved?.peecData) {
+          fetchPeec(profile.brandName, profile.introduction);
+        }
       }
       if (campaign) {
         setPlatforms(campaign.selectedPlatforms ?? []);
         setContentPillars((campaign.contentPillars ?? []).filter(Boolean));
       }
+      if (saved) {
+        if (saved.peecData) setPeecData(saved.peecData as any);
+        if (saved.selectedPeecSignals) {
+          setSelectedPeecSignals({
+            prompts: new Set(saved.selectedPeecSignals.prompts),
+            chatGaps: new Set(saved.selectedPeecSignals.chatGaps),
+            ugcBrief: new Set(saved.selectedPeecSignals.ugcBrief),
+          });
+        }
+        if (saved.ideas?.length) setIdeas(saved.ideas as any);
+        if (saved.savedIdeas?.length) setSavedIdeas(saved.savedIdeas as any);
+        if (saved.numberOfPosts) setNumberOfPosts(saved.numberOfPosts);
+      }
     })();
   }, []);
+
+  // Persist state to DB whenever it changes (debounced via 1s timeout)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const t = setTimeout(() => {
+      savePostIdeationState({
+        peecData,
+        selectedPeecSignals: {
+          prompts: Array.from(selectedPeecSignals.prompts),
+          chatGaps: Array.from(selectedPeecSignals.chatGaps),
+          ugcBrief: Array.from(selectedPeecSignals.ugcBrief),
+        },
+        ideas,
+        savedIdeas,
+        numberOfPosts,
+      });
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [peecData, selectedPeecSignals, ideas, savedIdeas, numberOfPosts]);
 
   async function fetchPeec(name: string, intro: string) {
     if (!name) return;

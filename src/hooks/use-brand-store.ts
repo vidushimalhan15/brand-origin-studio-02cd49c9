@@ -223,6 +223,48 @@ export async function loadLatestCampaignFromDB(): Promise<CampaignData | null> {
   };
 }
 
+// ── Post Ideation persistence ────────────────────────────────────────────────
+
+export type PostIdeationState = {
+  peecData: unknown | null;
+  selectedPeecSignals: { prompts: number[]; chatGaps: number[]; ugcBrief: number[] };
+  ideas: unknown[];
+  savedIdeas: unknown[];
+  numberOfPosts: number;
+};
+
+export async function savePostIdeationState(state: PostIdeationState) {
+  const sessionId = getSessionId();
+  await supabase.from("post_ideation_state").upsert(
+    {
+      session_id: sessionId,
+      peec_data: state.peecData,
+      selected_peec_signals: state.selectedPeecSignals,
+      ideas: state.ideas,
+      saved_ideas: state.savedIdeas,
+      number_of_posts: state.numberOfPosts,
+    },
+    { onConflict: "session_id" },
+  );
+}
+
+export async function loadPostIdeationState(): Promise<PostIdeationState | null> {
+  const sessionId = getSessionId();
+  const { data } = await supabase
+    .from("post_ideation_state")
+    .select("*")
+    .eq("session_id", sessionId)
+    .single();
+  if (!data) return null;
+  return {
+    peecData: data.peec_data ?? null,
+    selectedPeecSignals: data.selected_peec_signals ?? { prompts: [], chatGaps: [], ugcBrief: [] },
+    ideas: data.ideas ?? [],
+    savedIdeas: data.saved_ideas ?? [],
+    numberOfPosts: data.number_of_posts ?? 6,
+  };
+}
+
 export type StrategySettings = {
   presetId: string;
   customMix: Record<string, number> | null;
