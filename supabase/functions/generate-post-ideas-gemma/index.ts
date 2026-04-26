@@ -50,7 +50,7 @@ IMPORTANT RULES FOR PEEC SIGNALS:
 Each JSON object must have EXACTLY these keys:
 - id: "idea-1" to "idea-${numberOfPosts}"
 - title: max 8 words, specific
-- caption: 120-200 chars, 2-3 hashtags, ready to post
+- caption: 120-200 chars, NO hashtags at all, ready to post
 - platform: MUST be one of the provided platforms: ${platformList}
 - contentType: one of Educational, Thought Leadership, Behind-the-Scenes, Trending, Engagement, Inspirational, Promotional, UGC
 - pillar: which content pillar this serves

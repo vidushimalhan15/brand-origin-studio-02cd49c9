@@ -651,7 +651,7 @@ export const generatePostIdeas = createServerFn({ method: "POST" })
         ideas: raw.slice(0, data.count).map((idea: any, i) => ({
           id: String(idea.id ?? `idea-${i + 1}`),
           title: String(idea.title ?? "").slice(0, 80),
-          caption: String(idea.caption ?? "").slice(0, 300),
+          caption: String(idea.caption ?? "").replace(/#\w+/g, "").replace(/\s{2,}/g, " ").trim().slice(0, 300),
           platform: String(idea.platform ?? "LinkedIn"),
           contentType: String(idea.contentType ?? "Educational"),
           pillar: String(idea.pillar ?? ""),
