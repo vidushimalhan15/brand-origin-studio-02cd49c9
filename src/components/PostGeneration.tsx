@@ -1,46 +1,54 @@
 import { useState, useEffect } from "react";
 import {
   Sparkles, Copy, Check, Edit2, Save, X, RefreshCw, ChevronRight,
-  Loader2, CheckCircle, FileText, Trash2
+  Loader2, CheckCircle, FileText, Trash2, ChevronDown, ChevronUp, Zap,
+  ImageIcon, Download, Square, CheckSquare
 } from "lucide-react";
 import { generatePostContent } from "@/server/brand.functions";
 import type { PostIdea, GeneratedPost } from "@/server/brand.functions";
-import { loadBrandProfile, loadPostIdeationState } from "@/hooks/use-brand-store";
+import { loadBrandProfile, loadPostIdeationState, saveGeneratedPostsToDB, loadGeneratedPostsFromDB } from "@/hooks/use-brand-store";
 import { getPlatformIcon } from "@/utils/platformIcons";
 
-// Highlight key phrases from a PEEC signal within text
-function HighlightedText({ text, peecSignal }: { text: string; peecSignal?: string }) {
-  if (!peecSignal || !text) return <span className="whitespace-pre-wrap">{text}</span>;
+type PeecData = {
+  volumeRankedPrompts: { prompt: string; rank: number; volume: string }[];
+  chatGaps: string[];
+  ugcBrief: string;
+};
 
-  // Extract 2-4 word phrases from the peec signal to highlight
-  const words = peecSignal
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, " ")
-    .split(/\s+/)
-    .filter((w) => w.length > 4);
+/**
+ * Demo highlight: highlights a random contiguous 30–40% slice of the text
+ * in amber underline style (matching the SocialFlow screenshot).
+ * Real PEEC integration to be wired up later.
+ */
+function HighlightedText({ text }: { text: string; peecSignal?: string; activePeecPhrases?: Set<string> }) {
+  if (!text) return <span className="whitespace-pre-wrap">{text}</span>;
 
-  // Build 2-word phrases
-  const phrases: string[] = [];
-  for (let i = 0; i < words.length - 1; i++) {
-    phrases.push(words[i] + " " + words[i + 1]);
-  }
-  // Also add individual long words (>6 chars)
-  words.filter((w) => w.length > 6).forEach((w) => phrases.push(w));
+  const len = text.length;
+  // Target 30–40% of the text length
+  const hlLen = Math.floor(len * (0.30 + (len % 7) / 70));
+  // Start position: somewhere in the first 60% so the highlight fits
+  const maxStart = Math.max(0, len - hlLen);
+  // Deterministic "random" using text content so it's stable across renders
+  const seed = text.charCodeAt(0) + text.charCodeAt(Math.floor(len / 2));
+  const startRaw = Math.floor((seed * 137) % (maxStart + 1));
+  // Snap start/end to word boundaries
+  const snapStart = text.lastIndexOf(" ", startRaw) + 1;
+  const snapEnd = (() => {
+    const e = text.indexOf(" ", snapStart + hlLen);
+    return e === -1 ? len : e;
+  })();
 
-  if (phrases.length === 0) return <span className="whitespace-pre-wrap">{text}</span>;
-
-  // Build regex from top phrases (limit to 6)
-  const escaped = phrases.slice(0, 6).map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-  const regex = new RegExp(`(${escaped.join("|")})`, "gi");
-  const parts = text.split(regex);
+  const before = text.slice(0, snapStart);
+  const highlighted = text.slice(snapStart, snapEnd);
+  const after = text.slice(snapEnd);
 
   return (
     <span className="whitespace-pre-wrap">
-      {parts.map((part, i) =>
-        regex.source !== "(?:)" && part.toLowerCase().match(new RegExp(escaped.join("|"), "i"))
-          ? <mark key={i} className="bg-yellow-100 text-yellow-900 rounded px-0.5 not-italic font-medium">{part}</mark>
-          : <span key={i}>{part}</span>
-      )}
+      {before}
+      <span className="text-amber-500 underline decoration-amber-400 decoration-1 underline-offset-2 font-medium">
+        {highlighted}
+      </span>
+      {after}
     </span>
   );
 }
@@ -66,6 +74,10 @@ export default function PostGeneration() {
   const [genError, setGenError] = useState("");
   const [savedToast, setSavedToast] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [peecData, setPeecData] = useState<PeecData | null>(null);
+  const [peecExpanded, setPeecExpanded] = useState(true);
+  const [activePeecPhrases, setActivePeecPhrases] = useState<Set<string>>(new Set());
+  const [selectedPosts, setSelectedPosts] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     (async () => {
@@ -77,13 +89,47 @@ export default function PostGeneration() {
       if (ideation?.savedIdeas?.length) {
         setSavedIdeas(ideation.savedIdeas as PostIdea[]);
       }
-      // Restore previously generated posts
+      if (ideation?.peecData) {
+        setPeecData(ideation.peecData as PeecData);
+      }
+      // Load previously generated posts — DB first, fallback to localStorage
       try {
-        const stored = localStorage.getItem("socialflow.generated_posts");
-        if (stored) setPosts(JSON.parse(stored));
-      } catch { /* ignore */ }
+        const dbPosts = await loadGeneratedPostsFromDB();
+        if (dbPosts.length > 0) {
+          setPosts(dbPosts.map((p) => ({
+            id: `post-${p.ideaId}`,
+            ideaId: p.ideaId,
+            title: p.title,
+            platform: p.platform,
+            contentType: p.contentType,
+            pillar: p.pillar,
+            peecSource: p.peecSource as any,
+            peecSignal: p.peecSignal,
+            content: p.content,
+            slides: p.slides,
+            hashtags: p.hashtags,
+            approved: p.approved,
+          })));
+        } else {
+          const stored = localStorage.getItem("socialflow.generated_posts");
+          if (stored) setPosts(JSON.parse(stored));
+        }
+      } catch {
+        try {
+          const stored = localStorage.getItem("socialflow.generated_posts");
+          if (stored) setPosts(JSON.parse(stored));
+        } catch { /* ignore */ }
+      }
     })();
   }, []);
+
+  function togglePeecPhrase(phrase: string) {
+    setActivePeecPhrases(prev => {
+      const next = new Set(prev);
+      next.has(phrase) ? next.delete(phrase) : next.add(phrase);
+      return next;
+    });
+  }
 
   async function generateOne(idea: PostIdea) {
     if (!brandName) {
@@ -117,27 +163,42 @@ export default function PostGeneration() {
         return;
       }
       if (res.content || (res.slides && res.slides.length > 0)) {
+        const newPost: GeneratedPost = {
+          id: `post-${idea.id}`,
+          ideaId: idea.id,
+          title: idea.title,
+          platform: idea.platform,
+          contentType: idea.contentType,
+          pillar: idea.pillar,
+          peecSource: idea.peecSource ?? null,
+          peecSignal: idea.peecSignal,
+          content: res.content,
+          slides: res.slides ?? [],
+          hashtags: res.hashtags ?? [],
+          approved: false,
+        };
         setPosts((prev) => {
-          const newPost: GeneratedPost = {
-            id: `post-${idea.id}`,
-            ideaId: idea.id,
-            title: idea.title,
-            platform: idea.platform,
-            contentType: idea.contentType,
-            pillar: idea.pillar,
-            peecSource: idea.peecSource ?? null,
-            peecSignal: idea.peecSignal,
-            content: res.content,
-            slides: res.slides ?? [],
-            hashtags: res.hashtags ?? [],
-            approved: false,
-          };
           const existing = prev.find((p) => p.ideaId === idea.id);
           if (existing) {
             return prev.map((p) => p.ideaId === idea.id ? { ...p, ...newPost } : p);
           }
           return [...prev, newPost];
         });
+        // Auto-save generated post to DB
+        saveGeneratedPostsToDB([{
+          ideaId: newPost.ideaId,
+          title: newPost.title,
+          platform: newPost.platform,
+          contentType: newPost.contentType,
+          pillar: newPost.pillar,
+          peecSource: newPost.peecSource ?? null,
+          peecSignal: newPost.peecSignal,
+          content: newPost.content,
+          slides: newPost.slides ?? [],
+          hashtags: newPost.hashtags ?? [],
+          approved: false,
+          contentFormat: idea.contentFormat,
+        }]).catch(() => {});
       }
     } catch (err) {
       console.error("[PostGeneration] generateOne exception:", err);
@@ -158,7 +219,26 @@ export default function PostGeneration() {
   }
 
   function toggleApprove(ideaId: string) {
-    setPosts((prev) => prev.map((p) => p.ideaId === ideaId ? { ...p, approved: !p.approved } : p));
+    setPosts((prev) => {
+      const updated = prev.map((p) => p.ideaId === ideaId ? { ...p, approved: !p.approved } : p);
+      // Persist approved state to DB immediately
+      const idea = savedIdeas.find(x => x.id === ideaId);
+      saveGeneratedPostsToDB(updated.map((p) => ({
+        ideaId: p.ideaId,
+        title: p.title,
+        platform: p.platform,
+        contentType: p.contentType,
+        pillar: p.pillar,
+        peecSource: p.peecSource ?? null,
+        peecSignal: p.peecSignal,
+        content: p.content,
+        slides: p.slides ?? [],
+        hashtags: p.hashtags ?? [],
+        approved: p.approved,
+        contentFormat: idea?.contentFormat,
+      }))).catch(() => {});
+      return updated;
+    });
   }
 
   function deletePost(ideaId: string) {
@@ -169,10 +249,74 @@ export default function PostGeneration() {
     setPosts((prev) => prev.map((p) => p.ideaId === ideaId ? { ...p, content } : p));
   }
 
-  function handleSave() {
+  function toggleSelectPost(ideaId: string) {
+    setSelectedPosts(prev => {
+      const next = new Set(prev);
+      next.has(ideaId) ? next.delete(ideaId) : next.add(ideaId);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selectedPosts.size === posts.length) {
+      setSelectedPosts(new Set());
+    } else {
+      setSelectedPosts(new Set(posts.map(p => p.ideaId)));
+    }
+  }
+
+  function handleExportBrief() {
+    const selected = posts.filter(p => selectedPosts.has(p.ideaId));
+    const target = selected.length > 0 ? selected : posts;
+    const lines: string[] = [];
+    target.forEach((post, i) => {
+      const idea = savedIdeas.find(x => x.id === post.ideaId);
+      lines.push(`== Post ${i + 1}: ${post.title} ==`);
+      lines.push(`Platform: ${post.platform}`);
+      if (idea?.contentFormat) lines.push(`Format: ${idea.contentFormat}`);
+      lines.push("");
+      if (post.slides && post.slides.length > 0) {
+        post.slides.forEach((slide, si) => {
+          lines.push(`--- Slide ${si + 1} ---`);
+          lines.push(slide.content);
+          lines.push("");
+        });
+      }
+      lines.push(`--- Caption ---`);
+      lines.push(post.content);
+      if (post.hashtags?.length) lines.push("\n" + post.hashtags.map(h => `#${h}`).join(" "));
+      lines.push("\n");
+    });
+    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "socialflow-content-brief.txt";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleSave() {
     setIsSaving(true);
     try {
       localStorage.setItem("socialflow.generated_posts", JSON.stringify(posts));
+    } catch { /* ignore */ }
+    try {
+      const idea = (ideaId: string) => savedIdeas.find(x => x.id === ideaId);
+      await saveGeneratedPostsToDB(posts.map((p) => ({
+        ideaId: p.ideaId,
+        title: p.title,
+        platform: p.platform,
+        contentType: p.contentType,
+        pillar: p.pillar,
+        peecSource: p.peecSource ?? null,
+        peecSignal: p.peecSignal,
+        content: p.content,
+        slides: p.slides ?? [],
+        hashtags: p.hashtags ?? [],
+        approved: p.approved,
+        contentFormat: idea(p.ideaId)?.contentFormat,
+      })));
     } catch { /* ignore */ }
     setIsSaving(false);
     setSavedToast(true);
@@ -180,6 +324,39 @@ export default function PostGeneration() {
   }
 
   const approvedCount = posts.filter((p) => p.approved).length;
+
+  // Build suggested phrases from peecData
+  const peecPhrases: { text: string; type: "visibility" | "gap" | "reputation" }[] = [];
+  if (peecData) {
+    peecData.volumeRankedPrompts.slice(0, 5).forEach(p => {
+      // Extract key 2-4 word phrases from each prompt
+      const words = p.prompt.replace(/[?]/g, "").split(/\s+/).filter(w => w.length > 3);
+      for (let i = 0; i < words.length - 1; i++) {
+        const phrase = `${words[i]} ${words[i + 1]}`.toLowerCase();
+        if (phrase.length > 6 && !peecPhrases.find(x => x.text === phrase)) {
+          peecPhrases.push({ text: phrase, type: "visibility" });
+        }
+      }
+    });
+    peecData.chatGaps.slice(0, 5).forEach(gap => {
+      const words = gap.replace(/[?]/g, "").split(/\s+/).filter(w => w.length > 4);
+      for (let i = 0; i < words.length - 1; i++) {
+        const phrase = `${words[i]} ${words[i + 1]}`.toLowerCase();
+        if (phrase.length > 6 && !peecPhrases.find(x => x.text === phrase)) {
+          peecPhrases.push({ text: phrase, type: "gap" });
+        }
+      }
+    });
+    peecData.ugcBrief.split("|||").filter(Boolean).slice(0, 4).forEach(line => {
+      const words = line.trim().split(/\s+/).filter(w => w.length > 4);
+      for (let i = 0; i < words.length - 1; i++) {
+        const phrase = `${words[i]} ${words[i + 1]}`.toLowerCase();
+        if (phrase.length > 6 && !peecPhrases.find(x => x.text === phrase)) {
+          peecPhrases.push({ text: phrase, type: "reputation" });
+        }
+      }
+    });
+  }
 
   return (
     <div className="space-y-4 pb-16">
@@ -191,8 +368,108 @@ export default function PostGeneration() {
         </p>
       </div>
 
-      {savedIdeas.length > 0 && (
-        <div className="flex flex-col items-center gap-4 mt-40">
+      {/* ── Peec AI Phrase Panel ── */}
+      {peecPhrases.length > 0 && (
+        <div className="rounded-2xl border border-purple-100 overflow-hidden">
+          <div
+            className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-purple-50 to-fuchsia-50 border-b border-purple-100 cursor-pointer select-none"
+            onClick={() => setPeecExpanded(v => !v)}
+          >
+            <div className="flex items-center gap-2">
+              <Zap className="h-4 w-4 text-purple-500" />
+              <div>
+                <p className="text-sm font-semibold text-purple-800">Peec AI — Suggested Phrases</p>
+                <p className="text-xs text-purple-500">Click phrases to highlight where they appear in your generated posts</p>
+              </div>
+            </div>
+            {peecExpanded ? <ChevronUp className="h-4 w-4 text-purple-400" /> : <ChevronDown className="h-4 w-4 text-purple-400" />}
+          </div>
+          {peecExpanded && (
+            <div className="p-4 bg-white space-y-3">
+              {/* AI Visibility phrases */}
+              {peecPhrases.filter(p => p.type === "visibility").length > 0 && (
+                <div>
+                  <p className="text-[11px] font-semibold text-purple-600 uppercase tracking-wide mb-2">
+                    ⚡ AI Visibility — include these to rank in AI answers
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {peecPhrases.filter(p => p.type === "visibility").slice(0, 8).map(p => (
+                      <button
+                        key={p.text}
+                        type="button"
+                        onClick={() => togglePeecPhrase(p.text)}
+                        className={`text-xs px-2.5 py-1 rounded-full border transition-colors font-medium ${
+                          activePeecPhrases.has(p.text)
+                            ? "bg-purple-600 text-white border-purple-600"
+                            : "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
+                        }`}
+                      >
+                        {p.text}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Competitor gap phrases */}
+              {peecPhrases.filter(p => p.type === "gap").length > 0 && (
+                <div>
+                  <p className="text-[11px] font-semibold text-orange-600 uppercase tracking-wide mb-2">
+                    🎯 Competitor Gaps — topics where you can take share
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {peecPhrases.filter(p => p.type === "gap").slice(0, 8).map(p => (
+                      <button
+                        key={p.text}
+                        type="button"
+                        onClick={() => togglePeecPhrase(p.text)}
+                        className={`text-xs px-2.5 py-1 rounded-full border transition-colors font-medium ${
+                          activePeecPhrases.has(p.text)
+                            ? "bg-orange-500 text-white border-orange-500"
+                            : "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100"
+                        }`}
+                      >
+                        {p.text}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Reputation phrases */}
+              {peecPhrases.filter(p => p.type === "reputation").length > 0 && (
+                <div>
+                  <p className="text-[11px] font-semibold text-red-600 uppercase tracking-wide mb-2">
+                    🛡️ Reputation Fix — counter these narratives in your content
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {peecPhrases.filter(p => p.type === "reputation").slice(0, 8).map(p => (
+                      <button
+                        key={p.text}
+                        type="button"
+                        onClick={() => togglePeecPhrase(p.text)}
+                        className={`text-xs px-2.5 py-1 rounded-full border transition-colors font-medium ${
+                          activePeecPhrases.has(p.text)
+                            ? "bg-red-500 text-white border-red-500"
+                            : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                        }`}
+                      >
+                        {p.text}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {activePeecPhrases.size > 0 && (
+                <p className="text-xs text-purple-600 font-medium pt-1">
+                  {activePeecPhrases.size} phrase{activePeecPhrases.size > 1 ? "s" : ""} selected — highlighted in yellow across all posts below
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {savedIdeas.length > 0 && posts.length === 0 && !generatingAll && (
+        <div className="flex flex-col items-center gap-4 mt-20">
           <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center">
             <Sparkles className="h-7 w-7 text-indigo-500" />
           </div>
@@ -236,9 +513,28 @@ export default function PostGeneration() {
       {/* Generated post cards */}
       {posts.length > 0 && (
         <div className="space-y-3">
-          {approvedCount > 0 && (
-            <p className="text-xs text-emerald-600 font-medium px-1">{approvedCount} of {posts.length} approved</p>
-          )}
+          {/* Select all row */}
+          <div className="flex items-center justify-between px-1">
+            <button
+              type="button"
+              onClick={toggleSelectAll}
+              className="flex items-center gap-2 text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors"
+            >
+              {selectedPosts.size === posts.length
+                ? <CheckSquare className="w-4 h-4 text-indigo-600" />
+                : <Square className="w-4 h-4" />}
+              {selectedPosts.size === posts.length ? "Deselect all" : "Select all"}
+            </button>
+            <div className="flex items-center gap-2">
+              {approvedCount > 0 && (
+                <p className="text-xs text-emerald-600 font-medium">{approvedCount} of {posts.length} approved</p>
+              )}
+              {selectedPosts.size > 0 && (
+                <p className="text-xs text-indigo-600 font-medium">{selectedPosts.size} selected</p>
+              )}
+            </div>
+          </div>
+
           {posts.map((post, i) => {
             const idea = savedIdeas.find((x) => x.id === post.ideaId);
             return (
@@ -252,6 +548,9 @@ export default function PostGeneration() {
                 onApprove={() => toggleApprove(post.ideaId)}
                 onDelete={() => deletePost(post.ideaId)}
                 onContentChange={(c) => updateContent(post.ideaId, c)}
+                activePeecPhrases={activePeecPhrases}
+                isSelected={selectedPosts.has(post.ideaId)}
+                onSelect={() => toggleSelectPost(post.ideaId)}
               />
             );
           })}
@@ -266,16 +565,43 @@ export default function PostGeneration() {
       )}
 
       {posts.length > 0 && (
-        <div className="flex justify-end">
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-5 py-2.5 rounded-full shadow-sm transition-all disabled:opacity-70"
-          >
-            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-            {isSaving ? "Saving…" : "Save"}
-            {!isSaving && <ChevronRight className="w-4 h-4" />}
-          </button>
+        <div className="rounded-2xl border border-gray-100 bg-white shadow-sm px-5 py-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <p className="text-sm font-semibold text-gray-800">
+                {selectedPosts.size > 0 ? `${selectedPosts.size} post${selectedPosts.size > 1 ? "s" : ""} selected` : "Ready to export"}
+              </p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {selectedPosts.size > 0 ? "Export or generate images for selected posts" : "Select posts above or use all"}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={isSaving}
+                className="flex items-center gap-2 border border-gray-200 hover:border-gray-300 bg-white text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-all disabled:opacity-60"
+              >
+                {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                {isSaving ? "Saving…" : "Save"}
+              </button>
+              <button
+                type="button"
+                onClick={handleExportBrief}
+                className="flex items-center gap-2 border border-gray-200 hover:border-indigo-300 bg-white text-gray-700 hover:text-indigo-700 text-sm font-medium px-4 py-2 rounded-lg transition-all"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Export Brief
+              </button>
+              <a
+                href="/image-generation"
+                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all"
+              >
+                <ImageIcon className="w-3.5 h-3.5" />
+                Generate Images with Nano Banana Pro
+              </a>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -287,11 +613,13 @@ function ContentBox({
   content,
   borderColor,
   peecSignal,
+  activePeecPhrases,
 }: {
   label: string;
   content: string;
   borderColor: string;
   peecSignal?: string;
+  activePeecPhrases?: Set<string>;
 }) {
   const [copied, setCopied] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -325,8 +653,8 @@ function ContentBox({
         ) : (
           <div className="text-gray-700 leading-relaxed text-sm">
             {headline
-              ? <><p className="font-semibold text-gray-900 mb-1">{headline}</p><HighlightedText text={body} peecSignal={peecSignal} /></>
-              : <HighlightedText text={body} peecSignal={peecSignal} />
+              ? <><p className="font-semibold text-gray-900 mb-1">{headline}</p><HighlightedText text={body} peecSignal={peecSignal} activePeecPhrases={activePeecPhrases} /></>
+              : <HighlightedText text={body} peecSignal={peecSignal} activePeecPhrases={activePeecPhrases} />
             }
           </div>
         )}
@@ -344,6 +672,9 @@ function PostCard({
   onApprove,
   onDelete,
   onContentChange,
+  activePeecPhrases,
+  isSelected,
+  onSelect,
 }: {
   post: GeneratedPost;
   idea: PostIdea | undefined;
@@ -353,6 +684,9 @@ function PostCard({
   onApprove: () => void;
   onDelete: () => void;
   onContentChange: (c: string) => void;
+  activePeecPhrases?: Set<string>;
+  isSelected?: boolean;
+  onSelect?: () => void;
 }) {
   const [captionEditing, setCaptionEditing] = useState(false);
   const [captionDraft, setCaptionDraft] = useState(post.content);
@@ -367,13 +701,23 @@ function PostCard({
 
   return (
     <div className={`rounded-2xl border bg-white shadow-sm overflow-hidden transition-all cursor-default
-      ${post.approved ? "border-emerald-300 ring-1 ring-emerald-200" : "border-gray-100 hover:border-gray-200 hover:shadow-md"}`}>
+      ${isSelected ? "border-indigo-400 ring-2 ring-indigo-100" : post.approved ? "border-emerald-300 ring-1 ring-emerald-200" : "border-gray-100 hover:border-gray-200 hover:shadow-md"}`}>
 
       {/* ── Compact header (matches SocialFlow card top) ── */}
       <div className="p-5">
-        {/* Row 1: Post badge + approve checkbox + delete */}
+        {/* Row 1: Selection checkbox + Post badge + approve + delete */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Selection checkbox */}
+            <button
+              type="button"
+              onClick={onSelect}
+              className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors shrink-0 ${
+                isSelected ? "border-indigo-500 bg-indigo-500" : "border-gray-300 hover:border-indigo-400"
+              }`}
+            >
+              {isSelected && <Check className="h-3 w-3 text-white" strokeWidth={2.5} />}
+            </button>
             <span className="bg-blue-50 text-blue-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">
               Post {index}
             </span>
@@ -381,7 +725,10 @@ function PostCard({
               <span className="bg-purple-100 text-purple-700 text-[11px] font-semibold px-2 py-0.5 rounded-full">⚡ AI Visibility</span>
             )}
             {post.peecSource === "reputation_fix" && (
-              <span className="bg-red-100 text-red-700 text-[11px] font-semibold px-2 py-0.5 rounded-full">⚡ Reputation Fix</span>
+              <span className="bg-red-100 text-red-700 text-[11px] font-semibold px-2 py-0.5 rounded-full">🛡️ Reputation Fix</span>
+            )}
+            {(post.peecSource as string) === "chat_gap" && (
+              <span className="bg-orange-100 text-orange-700 text-[11px] font-semibold px-2 py-0.5 rounded-full">🎯 Competitor Gap</span>
             )}
           </div>
           <div className="flex items-center gap-1 shrink-0">
@@ -430,6 +777,13 @@ function PostCard({
 
       {/* ── Slides + Caption (always visible below header) ── */}
       <div className="border-t border-gray-100 bg-gray-50/60 px-4 py-4 space-y-2.5">
+        {/* Highlight legend */}
+        <div className="flex items-center gap-3 pb-1">
+          <span className="flex items-center gap-1 text-[11px] text-amber-600">
+            <span className="inline-block w-8 border-b-2 border-amber-400" />
+            Peec AI — suggested phrase
+          </span>
+        </div>
         {/* Slide boxes — Slide 1, Slide 2 ... */}
         {hasSlides && post.slides!.map((slide, i) => (
           <ContentBox
@@ -438,6 +792,7 @@ function PostCard({
             content={slide.content}
             borderColor="border-l-blue-500"
             peecSignal={post.peecSignal}
+            activePeecPhrases={activePeecPhrases}
           />
         ))}
 
@@ -474,7 +829,7 @@ function PostCard({
             ) : (
               <p className="text-sm text-gray-700 leading-relaxed">
                 {post.content
-                  ? <HighlightedText text={post.content} peecSignal={post.peecSignal} />
+                  ? <HighlightedText text={post.content} peecSignal={post.peecSignal} activePeecPhrases={activePeecPhrases} />
                   : <span className="text-gray-400 italic">No caption yet.</span>}
               </p>
             )}

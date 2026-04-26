@@ -102,7 +102,7 @@ export async function loadBrandProfile(): Promise<{ brandName: string; introduct
     .from("brand_profiles")
     .select("brand_name, introduction")
     .eq("session_id", sessionId)
-    .single();
+    .maybeSingle();
   if (!data) return null;
   return { brandName: data.brand_name, introduction: data.introduction };
 }
@@ -207,7 +207,7 @@ export async function loadLatestCampaignFromDB(): Promise<CampaignData | null> {
     .eq("session_id", sessionId)
     .order("updated_at", { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
   if (!data) return null;
   return {
     id: data.id,
@@ -254,7 +254,7 @@ export async function loadPostIdeationState(): Promise<PostIdeationState | null>
     .from("post_ideation_state")
     .select("*")
     .eq("session_id", sessionId)
-    .single();
+    .maybeSingle();
   if (!data) return null;
   return {
     peecData: data.peec_data ?? null,
@@ -290,11 +290,79 @@ export async function loadStrategyFromDB(): Promise<StrategySettings | null> {
     .from("content_strategy")
     .select("preset_id, custom_mix, product_mention")
     .eq("session_id", sessionId)
-    .single();
+    .maybeSingle();
   if (!data) return null;
   return {
     presetId: data.preset_id,
     customMix: data.custom_mix as Record<string, number> | null,
     productMention: data.product_mention,
   };
+}
+
+// ── Generated Posts ───────────────────────────────────────────────────────────
+
+export type GeneratedPostRow = {
+  ideaId: string;
+  title: string;
+  platform: string;
+  contentType: string;
+  pillar: string;
+  peecSource: string | null;
+  peecSignal?: string;
+  content: string;
+  slides: { title: string; content: string }[];
+  hashtags: string[];
+  approved: boolean;
+  contentFormat?: string;
+};
+
+export async function saveGeneratedPostsToDB(posts: GeneratedPostRow[]): Promise<void> {
+  const sessionId = getSessionId();
+  if (!posts.length) return;
+
+  const rows = posts.map((p) => ({
+    session_id: sessionId,
+    idea_id: p.ideaId,
+    title: p.title,
+    platform: p.platform,
+    content_type: p.contentType,
+    pillar: p.pillar,
+    peec_source: p.peecSource ?? null,
+    peec_signal: p.peecSignal ?? null,
+    content: p.content,
+    slides: p.slides,
+    hashtags: p.hashtags,
+    approved: p.approved,
+    content_format: p.contentFormat ?? null,
+  }));
+
+  await supabase
+    .from("generated_posts")
+    .upsert(rows, { onConflict: "session_id,idea_id" });
+}
+
+export async function loadGeneratedPostsFromDB(): Promise<GeneratedPostRow[]> {
+  const sessionId = getSessionId();
+  const { data, error } = await supabase
+    .from("generated_posts")
+    .select("*")
+    .eq("session_id", sessionId)
+    .order("created_at", { ascending: true });
+
+  if (error || !data) return [];
+
+  return data.map((row: any) => ({
+    ideaId: row.idea_id,
+    title: row.title,
+    platform: row.platform,
+    contentType: row.content_type,
+    pillar: row.pillar,
+    peecSource: row.peec_source,
+    peecSignal: row.peec_signal ?? undefined,
+    content: row.content,
+    slides: (row.slides as { title: string; content: string }[]) ?? [],
+    hashtags: (row.hashtags as string[]) ?? [],
+    approved: row.approved,
+    contentFormat: row.content_format ?? undefined,
+  }));
 }

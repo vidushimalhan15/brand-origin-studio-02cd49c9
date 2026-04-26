@@ -12,7 +12,9 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as StrategyRouteImport } from './routes/strategy'
 import { Route as PostIdeationRouteImport } from './routes/post-ideation'
 import { Route as PostGenerationRouteImport } from './routes/post-generation'
+import { Route as ImageGenerationRouteImport } from './routes/image-generation'
 import { Route as CampaignsRouteImport } from './routes/campaigns'
+import { Route as BrandSetupRouteImport } from './routes/brand-setup'
 import { Route as IndexRouteImport } from './routes/index'
 
 const StrategyRoute = StrategyRouteImport.update({
@@ -30,9 +32,19 @@ const PostGenerationRoute = PostGenerationRouteImport.update({
   path: '/post-generation',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ImageGenerationRoute = ImageGenerationRouteImport.update({
+  id: '/image-generation',
+  path: '/image-generation',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CampaignsRoute = CampaignsRouteImport.update({
   id: '/campaigns',
   path: '/campaigns',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BrandSetupRoute = BrandSetupRouteImport.update({
+  id: '/brand-setup',
+  path: '/brand-setup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -43,14 +55,18 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/brand-setup': typeof BrandSetupRoute
   '/campaigns': typeof CampaignsRoute
+  '/image-generation': typeof ImageGenerationRoute
   '/post-generation': typeof PostGenerationRoute
   '/post-ideation': typeof PostIdeationRoute
   '/strategy': typeof StrategyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/brand-setup': typeof BrandSetupRoute
   '/campaigns': typeof CampaignsRoute
+  '/image-generation': typeof ImageGenerationRoute
   '/post-generation': typeof PostGenerationRoute
   '/post-ideation': typeof PostIdeationRoute
   '/strategy': typeof StrategyRoute
@@ -58,7 +74,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/brand-setup': typeof BrandSetupRoute
   '/campaigns': typeof CampaignsRoute
+  '/image-generation': typeof ImageGenerationRoute
   '/post-generation': typeof PostGenerationRoute
   '/post-ideation': typeof PostIdeationRoute
   '/strategy': typeof StrategyRoute
@@ -67,16 +85,27 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/brand-setup'
     | '/campaigns'
+    | '/image-generation'
     | '/post-generation'
     | '/post-ideation'
     | '/strategy'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/campaigns' | '/post-generation' | '/post-ideation' | '/strategy'
+  to:
+    | '/'
+    | '/brand-setup'
+    | '/campaigns'
+    | '/image-generation'
+    | '/post-generation'
+    | '/post-ideation'
+    | '/strategy'
   id:
     | '__root__'
     | '/'
+    | '/brand-setup'
     | '/campaigns'
+    | '/image-generation'
     | '/post-generation'
     | '/post-ideation'
     | '/strategy'
@@ -84,7 +113,9 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BrandSetupRoute: typeof BrandSetupRoute
   CampaignsRoute: typeof CampaignsRoute
+  ImageGenerationRoute: typeof ImageGenerationRoute
   PostGenerationRoute: typeof PostGenerationRoute
   PostIdeationRoute: typeof PostIdeationRoute
   StrategyRoute: typeof StrategyRoute
@@ -113,11 +144,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PostGenerationRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/image-generation': {
+      id: '/image-generation'
+      path: '/image-generation'
+      fullPath: '/image-generation'
+      preLoaderRoute: typeof ImageGenerationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/campaigns': {
       id: '/campaigns'
       path: '/campaigns'
       fullPath: '/campaigns'
       preLoaderRoute: typeof CampaignsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/brand-setup': {
+      id: '/brand-setup'
+      path: '/brand-setup'
+      fullPath: '/brand-setup'
+      preLoaderRoute: typeof BrandSetupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -132,7 +177,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BrandSetupRoute: BrandSetupRoute,
   CampaignsRoute: CampaignsRoute,
+  ImageGenerationRoute: ImageGenerationRoute,
   PostGenerationRoute: PostGenerationRoute,
   PostIdeationRoute: PostIdeationRoute,
   StrategyRoute: StrategyRoute,

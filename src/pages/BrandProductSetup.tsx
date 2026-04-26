@@ -24,7 +24,7 @@ import {
 import { preloadBrandData, clearBrandCache } from '@/hooks/useProgressiveHydration';
 import { getBrandImage } from '@/utils/brandAvatar';
 import { toast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@tanstack/react-router';
 import { Badge } from '@/components/ui/badge';
 import { ValidationDialog } from '@/components/ValidationDialog';
 import { validateBrandSetup, validateProductSetup } from '@/utils/stepValidation';
@@ -139,7 +139,7 @@ const BrandProductSetup = () => {
 
       // Navigate to campaign if validation passes
       if (globalNav.nextStep?.route === '/campaign') {
-        navigate('/content-strategy-writing-style');
+        navigate({ to: '/strategy' });
       }
     }, 50);
   }, [globalNav, navigate]);
@@ -429,7 +429,7 @@ const BrandProductSetup = () => {
 
     // Navigate to campaign planning if not skipping navigation
     if (!options?.skipNavigation) {
-      navigate('/content-strategy-writing-style');
+      navigate({ to: '/strategy' });
     }
   };
   const handleProductComplete = (data: ProductDetails) => {
@@ -526,7 +526,7 @@ const BrandProductSetup = () => {
     // Store data in localStorage temporarily (will move to Supabase later)
     localStorage.setItem('brandProfile', JSON.stringify(brandProfile));
     localStorage.setItem('productList', JSON.stringify(productList));
-    navigate('/content-strategy-writing-style');
+    navigate({ to: '/strategy' });
   };
   const progressPercentage = () => {
     if (!currentBrand) return 0;

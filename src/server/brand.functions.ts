@@ -754,3 +754,43 @@ export const generatePostIdeas = createServerFn({ method: "POST" })
       return { ideas: [], error: err instanceof Error ? err.message : "Failed to generate ideas." };
     }
   });
+
+// ── Image Generation (Gemini Imagen) ─────────────────────────────────────────
+
+export const generateImageBannerbear = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      prompt: z.string(),
+      aspectRatio: z.string().optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    try {
+      const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
+      const supabaseKey = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      if (!supabaseUrl || !supabaseKey) {
+        return { error: "Supabase not configured" };
+      }
+
+      const res = await fetch(`${supabaseUrl}/functions/v1/generate-image-bannerbear`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({
+          prompt: data.prompt,
+          aspectRatio: data.aspectRatio ?? "1:1",
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || json.error) {
+        return { error: json.error ?? `HTTP ${res.status}` };
+      }
+
+      return { imageUrl: json.imageUrl as string, uid: json.uid as string, status: json.status as string };
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : "Image generation failed" };
+    }
+  });
