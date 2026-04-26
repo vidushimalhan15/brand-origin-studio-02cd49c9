@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import AppLayout from "@/components/AppLayout";
-import BrandSetupPage from "@/pages/BrandSetupPage";
+import BrandIdentityStep from "@/components/BrandIdentityStep";
 
 export const Route = createFileRoute("/brand-setup")({
   component: BrandSetupRoute,
@@ -9,7 +9,7 @@ export const Route = createFileRoute("/brand-setup")({
 function BrandSetupRoute() {
   return (
     <AppLayout>
-      <BrandSetupPage />
+      <BrandIdentityStep />
     </AppLayout>
   );
 }
