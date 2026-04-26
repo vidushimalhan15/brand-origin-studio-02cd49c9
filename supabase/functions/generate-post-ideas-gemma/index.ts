@@ -71,12 +71,10 @@ Return ONLY the raw JSON array. No prose. No markdown. Start with [ end with ].`
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+        contents: [{ role: "user", parts: [{ text: systemPrompt + "\n\n" + userPrompt }] }],
         generationConfig: {
           temperature: 0.85,
           maxOutputTokens: 8192,
-          responseMimeType: "application/json",
         },
       }),
     });
