@@ -606,49 +606,47 @@ export const generatePostIdeas = createServerFn({ method: "POST" })
       introduction: z.string().max(600).optional().default(""),
       platforms: z.array(z.string()).optional().default([]),
       contentPillars: z.array(z.string()).optional().default([]),
-      trendingContext: z.string().max(2000).optional().default(""),
+      trendingContext: z.string().max(4000).optional().default(""),
       count: z.number().min(1).max(30).optional().default(6),
     }),
   )
   .handler(async ({ data }): Promise<GeneratePostIdeasResult> => {
-    const system =
-      "You are a social media content strategist. Generate creative, platform-specific post ideas for a brand. " +
-      "Each idea should have a strong hook, be aligned with the content pillar, and be immediately actionable. " +
-      "Reply with strict JSON only.";
+    const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-    const platformList = data.platforms.length > 0 ? data.platforms.join(", ") : "LinkedIn, Instagram";
-    const pillarList = data.contentPillars.filter(Boolean).join(", ") || "Brand Awareness, Thought Leadership";
-
-    const user = `Brand: ${data.brandName}
-Introduction: ${data.introduction}
-Platforms: ${platformList}
-Content Pillars: ${pillarList}
-${data.trendingContext ? `Trending context / recent news:\n${data.trendingContext}` : ""}
-
-Generate exactly ${data.count} post ideas. Return JSON in this exact shape:
-{
-  "ideas": [
-    {
-      "id": "unique-id-1",
-      "title": "Short descriptive title (max 8 words)",
-      "caption": "Full post caption (100-180 chars, platform-appropriate, includes 2-3 hashtags)",
-      "platform": "one of: LinkedIn | Instagram | X/Twitter | YouTube | Facebook | Blog Post",
-      "contentType": "one of: Educational | Promotional | UGC | Thought Leadership | Behind-the-Scenes | Trending",
-      "pillar": "which content pillar this serves",
-      "hook": "First line hook sentence"
+    if (!supabaseUrl || !supabaseKey) {
+      return { ideas: [], error: "Supabase environment variables are not configured." };
     }
-  ]
-}`;
 
     try {
-      const raw = await callOpenAI(system, user);
-      const parsed = extractJson<{ ideas: PostIdea[] }>(raw);
-      if (!parsed?.ideas?.length) {
-        return { ideas: [], error: "Could not generate post ideas." };
+      const res = await fetch(`${supabaseUrl}/functions/v1/generate-post-ideas-gemma`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${supabaseKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          brandName: data.brandName,
+          introduction: data.introduction,
+          platforms: data.platforms,
+          contentPillars: data.contentPillars,
+          trendingContext: data.trendingContext,
+          count: data.count,
+        }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        return { ideas: [], error: `Generation failed (${res.status}): ${text.slice(0, 200)}` };
       }
+
+      const json = await res.json();
+      if (json.error) return { ideas: [], error: json.error };
+
+      const raw: unknown[] = Array.isArray(json.ideas) ? json.ideas : [];
       return {
-        ideas: parsed.ideas.slice(0, data.count).map((idea, i) => ({
-          id: idea.id ?? `idea-${i + 1}`,
+        ideas: raw.slice(0, data.count).map((idea: any, i) => ({
+          id: String(idea.id ?? `idea-${i + 1}`),
           title: String(idea.title ?? "").slice(0, 80),
           caption: String(idea.caption ?? "").slice(0, 300),
           platform: String(idea.platform ?? "LinkedIn"),
@@ -659,9 +657,6 @@ Generate exactly ${data.count} post ideas. Return JSON in this exact shape:
       };
     } catch (err) {
       console.error("generatePostIdeas failed:", err);
-      return {
-        ideas: [],
-        error: err instanceof Error ? err.message : "Failed to generate ideas.",
-      };
+      return { ideas: [], error: err instanceof Error ? err.message : "Failed to generate ideas." };
     }
   });
