@@ -76,12 +76,13 @@ Generate exactly ${numberOfPosts} ideas now.`;
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemma-3-27b-it:generateContent?key=${geminiApiKey}`;
 
+    const combinedPrompt = `${systemPrompt}\n\n${userPrompt}`;
+
     const geminiRes = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+        contents: [{ role: "user", parts: [{ text: combinedPrompt }] }],
         generationConfig: {
           temperature: 0.85,
           maxOutputTokens: 8192,
