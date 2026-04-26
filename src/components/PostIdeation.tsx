@@ -488,6 +488,7 @@ const PLATFORM_FORMATS: Record<string, string[]> = {
 };
 
 function getDefaultFormat(platform: string): string {
+  if (platform === "Instagram" || platform === "LinkedIn" || platform === "Facebook") return "Carousel";
   return PLATFORM_FORMATS[platform]?.[0] ?? "Text Post";
 }
 

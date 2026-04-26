@@ -202,13 +202,14 @@ export default function PostGeneration() {
           {approvedCount > 0 && (
             <p className="text-xs text-emerald-600 font-medium px-1">{approvedCount} of {posts.length} approved</p>
           )}
-          {posts.map((post) => {
-            const idea = savedIdeas.find((i) => i.id === post.ideaId);
+          {posts.map((post, i) => {
+            const idea = savedIdeas.find((x) => x.id === post.ideaId);
             return (
               <PostCard
                 key={post.id}
                 post={post}
                 idea={idea}
+                index={i + 1}
                 isRegenerating={generating.has(post.ideaId)}
                 onRegenerate={() => idea && generateOne(idea)}
                 onApprove={() => toggleApprove(post.ideaId)}
@@ -244,57 +245,52 @@ export default function PostGeneration() {
   );
 }
 
-function SlideBox({
+function ContentBox({
   label,
   content,
-  borderColor = "border-l-blue-500",
+  borderColor,
+  index,
 }: {
   label: string;
   content: string;
-  borderColor?: string;
+  borderColor: string;
+  index?: number;
 }) {
   const [copied, setCopied] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(content);
 
-  // parse bold headline from "Headline.\n\nBody" pattern
+  useEffect(() => { if (!editing) setDraft(content); }, [content, editing]);
+
   const parts = content.split(/\n\n/);
   const headline = parts.length > 1 ? parts[0] : null;
   const body = parts.length > 1 ? parts.slice(1).join("\n\n") : content;
 
   return (
-    <div className={`rounded-lg border border-gray-100 border-l-4 ${borderColor} bg-white shadow-sm`}>
-      {/* Header */}
+    <div className={`rounded-xl border border-gray-100 border-l-4 ${borderColor} bg-white`}>
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
         <span className="text-sm font-semibold text-gray-800">{label}</span>
-        <div className="flex gap-1">
-          <button
-            onClick={() => { navigator.clipboard.writeText(content); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
-            className="p-1.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors"
-          >
+        <div className="flex gap-0.5">
+          <button type="button" onClick={() => { navigator.clipboard.writeText(content); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
+            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors">
             {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
           </button>
-          <button
-            onClick={() => setEditing((v) => !v)}
-            className="p-1.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors"
-          >
+          <button type="button" onClick={() => setEditing(v => !v)}
+            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors">
             <Edit2 className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
-      {/* Content */}
       <div className="px-4 py-3">
         {editing ? (
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            rows={4}
-            className="w-full text-sm text-gray-700 bg-white border border-indigo-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-100 resize-none leading-relaxed"
-          />
+          <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={4}
+            className="w-full text-sm text-gray-700 bg-white border border-indigo-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-100 resize-none leading-relaxed" />
         ) : (
-          <div className="text-gray-700 leading-relaxed">
-            {headline && <p className="font-semibold text-gray-900 mb-1.5 text-sm">{headline}</p>}
-            <p className="text-sm whitespace-pre-wrap">{body}</p>
+          <div className="text-gray-700 leading-relaxed text-sm">
+            {headline
+              ? <><p className="font-semibold text-gray-900 mb-1">{headline}</p><p className="whitespace-pre-wrap">{body}</p></>
+              : <p className="whitespace-pre-wrap">{body}</p>
+            }
           </div>
         )}
       </div>
@@ -305,6 +301,7 @@ function SlideBox({
 function PostCard({
   post,
   idea,
+  index,
   isRegenerating,
   onRegenerate,
   onApprove,
@@ -313,91 +310,92 @@ function PostCard({
 }: {
   post: GeneratedPost;
   idea: PostIdea | undefined;
+  index: number;
   isRegenerating: boolean;
   onRegenerate: () => void;
   onApprove: () => void;
   onDelete: () => void;
   onContentChange: (c: string) => void;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(post.content);
+  const [captionEditing, setCaptionEditing] = useState(false);
+  const [captionDraft, setCaptionDraft] = useState(post.content);
   const [captionCopied, setCaptionCopied] = useState(false);
 
-  useEffect(() => {
-    if (!editing) setDraft(post.content);
-  }, [post.content]);
+  useEffect(() => { if (!captionEditing) setCaptionDraft(post.content); }, [post.content, captionEditing]);
 
-  function saveEdit() { onContentChange(draft); setEditing(false); }
-
-  const platformKey = post.platform.toLowerCase().replace("/twitter", "").replace("x/", "x").trim();
+  const platformKey = post.platform.toLowerCase().replace("x/twitter", "x").replace("blog post", "blog").trim();
   const PlatformIcon = getPlatformIcon(platformKey, "h-3.5 w-3.5");
-  const isCarousel = post.slides && post.slides.length > 0;
-  const snippet = (isCarousel ? post.slides![0]?.content : post.content)?.slice(0, 100) ?? "";
+  const hasSlides = post.slides && post.slides.length > 0;
+  const snippet = (hasSlides ? post.slides![0]?.content : post.content)?.slice(0, 90) ?? "";
 
   return (
-    <div className={`rounded-2xl border shadow-sm bg-white overflow-hidden transition-colors ${post.approved ? "border-emerald-300" : "border-gray-100 hover:border-gray-200 hover:shadow-md"}`}>
-      {/* ── Summary card header ── */}
+    <div className={`rounded-2xl border bg-white shadow-sm overflow-hidden transition-all cursor-default
+      ${post.approved ? "border-emerald-300 ring-1 ring-emerald-200" : "border-gray-100 hover:border-gray-200 hover:shadow-md"}`}>
+
+      {/* ── Compact header (matches SocialFlow card top) ── */}
       <div className="p-5">
-        {/* Row 1: Post N badge + status + actions */}
+        {/* Row 1: Post badge + approve checkbox + delete */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="bg-blue-50 text-blue-700 text-xs font-medium px-2.5 py-0.5 rounded-full">
-              {post.title.slice(0, 32)}
+            <span className="bg-blue-50 text-blue-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+              Post {index}
             </span>
             {post.peecSource === "ai_visibility" && (
-              <span className="bg-purple-100 text-purple-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">⚡ AI Visibility</span>
+              <span className="bg-purple-100 text-purple-700 text-[11px] font-semibold px-2 py-0.5 rounded-full">⚡ AI Visibility</span>
             )}
             {post.peecSource === "reputation_fix" && (
-              <span className="bg-red-100 text-red-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">⚡ Reputation Fix</span>
-            )}
-            {post.approved && (
-              <span className="flex items-center gap-1 bg-emerald-100 text-emerald-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">
-                <CheckCircle className="h-3 w-3" /> Approved
-              </span>
+              <span className="bg-red-100 text-red-700 text-[11px] font-semibold px-2 py-0.5 rounded-full">⚡ Reputation Fix</span>
             )}
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <button onClick={onRegenerate} disabled={isRegenerating} title="Regenerate" className="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-40">
-              {isRegenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            {/* Approve checkbox — green when checked, matching SocialFlow */}
+            <button type="button" onClick={onApprove}
+              className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors
+                ${post.approved ? "border-emerald-500 bg-emerald-500" : "border-gray-300 hover:border-emerald-400"}`}>
+              {post.approved && <Check className="h-3 w-3 text-white" strokeWidth={2.5} />}
             </button>
-            <button onClick={onApprove} title={post.approved ? "Unapprove" : "Approve"}
-              className={`p-1.5 rounded-lg transition-colors ${post.approved ? "text-emerald-600 bg-emerald-50" : "text-gray-400 hover:text-emerald-600 hover:bg-emerald-50"}`}>
-              <CheckCircle className="h-3.5 w-3.5" />
+            <button type="button" onClick={onRegenerate} disabled={isRegenerating} title="Regenerate"
+              className="p-1 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-40">
+              {isRegenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
             </button>
-            <button onClick={onDelete} title="Delete" className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors">
-              <Trash2 className="h-3.5 w-3.5" />
+            <button type="button" onClick={onDelete} title="Delete"
+              className="p-1 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+              <Trash2 className="h-4 w-4" />
             </button>
           </div>
         </div>
 
-        {/* Row 2: platform + format badges */}
+        {/* Row 2: platform icon + name + format badge */}
         <div className="flex items-center gap-2 mb-3">
           <div className="flex items-center gap-1 text-xs text-gray-500">
             {PlatformIcon}
             <span>{post.platform}</span>
           </div>
-          <span className="bg-gray-50 text-gray-600 text-xs border border-gray-100 px-2.5 py-0.5 rounded-full">
-            {post.contentType}
+          <span className="bg-gray-50 text-gray-600 text-[11px] border border-gray-200 px-2 py-0.5 rounded-full">
+            {idea?.contentFormat ?? post.contentType}
           </span>
         </div>
 
         {/* Row 3: snippet preview */}
-        <p className="text-xs text-gray-600 line-clamp-3 mb-3 leading-relaxed">{snippet}</p>
+        <p className="text-xs text-gray-600 line-clamp-3 leading-relaxed mb-3">{snippet}</p>
 
-        {/* Row 4: divider + slide count + Ready */}
-        <div className="border-t border-gray-100 pt-3 flex items-center justify-between">
+        {/* Row 4: slide count + status badge */}
+        <div className="flex items-center justify-between border-t border-gray-100 pt-2.5">
           <span className="text-xs text-gray-400">
-            {isCarousel ? `${post.slides!.length} slides` : "Text post"}
+            {hasSlides ? `${post.slides!.length} slides` : "~" + (post.content?.split(" ").length ?? 0) + " words"}
           </span>
-          <span className="bg-indigo-50 text-indigo-600 text-xs font-semibold px-3 py-0.5 rounded-full">Ready</span>
+          <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full
+            ${post.approved ? "bg-emerald-100 text-emerald-700" : "bg-blue-50 text-blue-600"}`}>
+            {post.approved ? "Selected" : "Ready"}
+          </span>
         </div>
       </div>
 
-      {/* ── Slide boxes + caption ── */}
-      <div className="border-t border-gray-100 px-5 py-4 bg-gray-50/50 space-y-3">
-        {/* Carousel slides */}
-        {isCarousel && post.slides!.map((slide, i) => (
-          <SlideBox
+      {/* ── Slides + Caption (always visible below header) ── */}
+      <div className="border-t border-gray-100 bg-gray-50/60 px-4 py-4 space-y-2.5">
+        {/* Slide boxes — Slide 1, Slide 2 ... */}
+        {hasSlides && post.slides!.map((slide, i) => (
+          <ContentBox
             key={i}
             label={`Slide ${i + 1}`}
             content={slide.content}
@@ -405,48 +403,45 @@ function PostCard({
           />
         ))}
 
-        {/* Caption box */}
-        <div className="rounded-lg border border-gray-100 border-l-4 border-l-green-500 bg-white shadow-sm">
+        {/* Caption box — green accent, matches SocialFlow */}
+        <div className="rounded-xl border border-gray-100 border-l-4 border-l-green-500 bg-white">
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
             <div className="flex items-center gap-1.5">
               <FileText className="h-3.5 w-3.5 text-green-600" />
               <span className="text-sm font-semibold text-gray-800">Caption</span>
             </div>
-            <div className="flex gap-1">
-              <button
+            <div className="flex gap-0.5">
+              <button type="button"
                 onClick={() => { navigator.clipboard.writeText(post.content); setCaptionCopied(true); setTimeout(() => setCaptionCopied(false), 1500); }}
-                className="p-1.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors"
-              >
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors">
                 {captionCopied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
               </button>
-              {editing ? (
+              {captionEditing ? (
                 <>
-                  <button onClick={saveEdit} className="p-1.5 rounded text-emerald-600 hover:bg-emerald-50 transition-colors"><Save className="h-3.5 w-3.5" /></button>
-                  <button onClick={() => { setEditing(false); setDraft(post.content); }} className="p-1.5 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"><X className="h-3.5 w-3.5" /></button>
+                  <button type="button" onClick={() => { onContentChange(captionDraft); setCaptionEditing(false); }}
+                    className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors"><Save className="h-3.5 w-3.5" /></button>
+                  <button type="button" onClick={() => { setCaptionEditing(false); setCaptionDraft(post.content); }}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"><X className="h-3.5 w-3.5" /></button>
                 </>
               ) : (
-                <button onClick={() => setEditing(true)} className="p-1.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors"><Edit2 className="h-3.5 w-3.5" /></button>
+                <button type="button" onClick={() => setCaptionEditing(true)}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors"><Edit2 className="h-3.5 w-3.5" /></button>
               )}
             </div>
           </div>
           <div className="px-4 py-3">
-            {editing ? (
-              <textarea
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                rows={5}
-                className="w-full text-sm text-gray-700 bg-white border border-indigo-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-100 resize-none leading-relaxed"
-              />
+            {captionEditing ? (
+              <textarea value={captionDraft} onChange={e => setCaptionDraft(e.target.value)} rows={5}
+                className="w-full text-sm text-gray-700 bg-white border border-indigo-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-100 resize-none leading-relaxed" />
             ) : (
               <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
                 {post.content || <span className="text-gray-400 italic">No caption yet.</span>}
               </p>
             )}
           </div>
-          {/* Hashtags */}
-          {post.hashtags && post.hashtags.length > 0 && !editing && (
+          {post.hashtags && post.hashtags.length > 0 && !captionEditing && (
             <div className="px-4 pb-3 flex flex-wrap gap-1.5">
-              {post.hashtags.map((tag) => (
+              {post.hashtags.map(tag => (
                 <span key={tag} className="text-[11px] text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">#{tag}</span>
               ))}
             </div>
