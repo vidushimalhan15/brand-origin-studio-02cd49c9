@@ -607,7 +607,7 @@ export const generatePostIdeas = createServerFn({ method: "POST" })
       platforms: z.array(z.string()).optional().default([]),
       contentPillars: z.array(z.string()).optional().default([]),
       trendingContext: z.string().max(2000).optional().default(""),
-      count: z.number().min(1).max(12).optional().default(6),
+      count: z.number().min(1).max(30).optional().default(6),
     }),
   )
   .handler(async ({ data }): Promise<GeneratePostIdeasResult> => {
