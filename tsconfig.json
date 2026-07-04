@@ -1,15 +1,18 @@
 {
-  "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts", "eslint.config.js"],
+  "include": ["src", "vite.config.ts"],
   "compilerOptions": {
     "target": "ES2022",
+    "useDefineForClassFields": true,
     "jsx": "react-jsx",
     "module": "ESNext",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["vite/client"],
+    "types": ["vite/client", "node"],
 
     /* Bundler mode */
     "moduleResolution": "Bundler",
     "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
     "verbatimModuleSyntax": false,
     "noEmit": true,
 
@@ -19,7 +22,6 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true,
     "paths": {
       "@/*": ["./src/*"]
     }

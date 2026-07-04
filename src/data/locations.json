@@ -1,0 +1,23 @@
+[
+  {
+    "place": "Lisbon",
+    "lat": 38.72,
+    "lng": -9.14,
+    "photos": ["lisbon1.jpg", "lisbon2.jpg"],
+    "message": "The tram down to Alfama, that impossible sunset over the river, and pastéis de nata for breakfast three days running. I'd get lost in those hills with you again in a heartbeat."
+  },
+  {
+    "place": "Kyoto",
+    "lat": 35.01,
+    "lng": 135.77,
+    "photos": ["kyoto1.jpg", "kyoto2.jpg"],
+    "message": "Rain on the temple roofs and you insisting we find one more shrine before dark. We did. It was worth it. It's always worth it with you."
+  },
+  {
+    "place": "Reykjavík",
+    "lat": 64.15,
+    "lng": -21.94,
+    "photos": ["reykjavik1.jpg"],
+    "message": "We froze, we laughed, we waited hours for the northern lights and then forgot to look up because we were talking. Best night of that whole year."
+  }
+]
