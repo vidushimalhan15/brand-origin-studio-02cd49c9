@@ -25,7 +25,7 @@ explains it clearly, tracks it, and we revise the weak spots before the exam.
 
 | Total concepts | 🔴 Shaky | 🟡 Getting there | 🟢 Solid |
 |:---:|:---:|:---:|:---:|
-| 2 | 2 | 0 | 0 |
+| 3 | 3 | 0 | 0 |
 
 *Last updated: 2026-07-06*
 
@@ -82,6 +82,27 @@ Entry template (Claude fills this in):
   far enough that the lane is clear, and (b) I'm fast enough to get past quickly.
   Fail either one → do not overtake.**
 
+### Turning left while being overtaken — stop and wait (Q 2.2.09-004-M)
+- **Status:** 🔴 Shaky
+- **Added:** 2026-07-06
+- **The question / what confused me:** I want to turn left into a farm track and
+  thought I could just take the turn. It didn't make sense why the answer was
+  "stop and wait."
+- **The detail I missed:** In the **rear-view mirror** a **motorcycle is already
+  overtaking me on the left** — the exact space I'd swing into to turn left.
+- **Explanation:** Turning left moves my car across the left side of the road,
+  which is where the overtaking motorcycle is right now. If I turn, I cut across
+  its path and it hits my left side (a common fatal motorcycle crash). So I
+  **stop at the farm track and wait** for the bike to finish passing, THEN turn.
+  I'm not abandoning the turn — just delaying it until the hazard clears.
+  - **Traps:** "accelerate and swiftly take the turn" = the dangerous instinct
+    that causes the crash. "I can't turn off here" = false, I can, I just wait.
+- **Key thing to remember:** **Before turning left, check mirror AND blind spot
+  for anyone overtaking me. If someone is passing on my left, I must NOT turn —
+  wait for them to clear. My turn signal doesn't let me cut across a vehicle
+  already alongside me.** (This is the flip side of the overtaking question:
+  the vehicle already in the overtaking move has priority over that space.)
+
 ---
 
 ## Revision Queue
@@ -94,6 +115,8 @@ sorted so the shakiest concepts float to the top.
 2. 🔴 **No overtaking if view obscured OR speed difference too small**
    (Q 1.1.06-201-M) — need clear sight AND enough speed; watch for "-M"
    multi-answer questions.
+3. 🔴 **Being overtaken → don't turn left, wait** (Q 2.2.09-004-M) — check the
+   mirror; if a vehicle is passing on my left I stop and wait before turning.
 
 ---
 
