@@ -25,7 +25,7 @@ explains it clearly, tracks it, and we revise the weak spots before the exam.
 
 | Total concepts | 🔴 Shaky | 🟡 Getting there | 🟢 Solid |
 |:---:|:---:|:---:|:---:|
-| 0 | 0 | 0 | 0 |
+| 1 | 1 | 0 | 0 |
 
 *Last updated: 2026-07-06*
 
@@ -46,7 +46,22 @@ Entry template (Claude fills this in):
 - **Key thing to remember:** ...
 -->
 
-_Nothing yet — drop in your first question and I'll fill this in._
+### Right of way — turning left with an oncoming cyclist (Q 1.3.01-052)
+- **Status:** 🔴 Shaky
+- **Added:** 2026-07-06
+- **The question / what confused me:** At an intersection I want to turn left.
+  There's a green car coming from the right and a cyclist coming toward me.
+  I thought I had priority so I could turn left before the cyclist. Wrong.
+- **Explanation:** Two rules stack here:
+  1. **Turning left = yield to oncoming traffic.** When you turn left you cross
+     the path of anyone coming toward you. The oncoming cyclist going straight
+     therefore has priority — you must let them pass before you complete the turn.
+  2. **Don't block the junction.** Even where "rechts vor links" (right before
+     left) gives you priority over the other car, you should give it up rather
+     than push into the junction and get stuck. Having priority ≠ having to take it.
+- **Key thing to remember:** **Turning left, I give way to everything coming
+  toward me (cars AND cyclists) because I'm crossing their path. Priority over
+  one road user never cancels my duty to yield to another.**
 
 ---
 
@@ -55,7 +70,8 @@ _Nothing yet — drop in your first question and I'll fill this in._
 The list of things to re-test myself on before the exam. Claude keeps this
 sorted so the shakiest concepts float to the top.
 
-_Empty for now._
+1. 🔴 **Turning left → yield to oncoming cyclist** (Q 1.3.01-052) — remember
+   that turning left means crossing oncoming traffic's path, so they go first.
 
 ---
 
@@ -64,5 +80,5 @@ _Empty for now._
 *(Fill these in whenever you know them — helps me pace the revision.)*
 
 - **Exam date:** _not set_
-- **Country / region rules:** _not set_
-- **Test type:** _theory / hazard perception / practical — not set_
+- **Country / region rules:** Germany (official TÜV & Dekra theory questions)
+- **Test type:** Theory (Führerschein) — question bank format like "1.3.01-052"
