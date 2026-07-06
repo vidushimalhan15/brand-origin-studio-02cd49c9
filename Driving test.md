@@ -25,7 +25,7 @@ explains it clearly, tracks it, and we revise the weak spots before the exam.
 
 | Total concepts | 🔴 Shaky | 🟡 Getting there | 🟢 Solid |
 |:---:|:---:|:---:|:---:|
-| 1 | 1 | 0 | 0 |
+| 2 | 2 | 0 | 0 |
 
 *Last updated: 2026-07-06*
 
@@ -63,6 +63,25 @@ Entry template (Claude fills this in):
   toward me (cars AND cyclists) because I'm crossing their path. Priority over
   one road user never cancels my duty to yield to another.**
 
+### When you may NOT overtake — obscured view + small speed difference (Q 1.1.06-201-M)
+- **Status:** 🔴 Shaky
+- **Added:** 2026-07-06
+- **The question / what confused me:** Country road, cyclists ahead, road bends
+  so I can't see far. "Why may you not overtake?" It's a **multi-answer** question
+  (the "-M" suffix = more than one correct answer — always check for that).
+- **Explanation:** Two independent reasons both make overtaking unsafe here:
+  1. **Small speed difference.** I'm only a little faster than the cyclists, so
+     getting past takes a long time and a long stretch of the wrong side of the
+     road — more time exposed to oncoming traffic = more dangerous.
+  2. **Obscured overtaking distance.** The cyclists and the curve/crest hide the
+     lane ahead. If I can't see the overtaking lane is clear and long enough,
+     I must not overtake.
+  - **Trap answer:** "there is a no-overtaking sign" — there was NO sign. Don't
+    invent a reason that isn't actually shown in the picture.
+- **Key thing to remember:** **Only overtake when BOTH are true: (a) I can see
+  far enough that the lane is clear, and (b) I'm fast enough to get past quickly.
+  Fail either one → do not overtake.**
+
 ---
 
 ## Revision Queue
@@ -72,6 +91,9 @@ sorted so the shakiest concepts float to the top.
 
 1. 🔴 **Turning left → yield to oncoming cyclist** (Q 1.3.01-052) — remember
    that turning left means crossing oncoming traffic's path, so they go first.
+2. 🔴 **No overtaking if view obscured OR speed difference too small**
+   (Q 1.1.06-201-M) — need clear sight AND enough speed; watch for "-M"
+   multi-answer questions.
 
 ---
 
